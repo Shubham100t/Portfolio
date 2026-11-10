@@ -74,9 +74,9 @@ export const BasicAstronaut = forwardRef<THREE.Group>(function BasicAstronaut(_p
         : 0;
       // The near-horizon segment also applies a mild tidal stretch so the
       // descent is visibly affected even before an exact camera alignment.
-      const tidalStrength = (1.0 - THREE.MathUtils.smoothstep(2.0, 4.8, astronautWorldPosition.length())) * 0.24;
+      const tidalStrength = (1.0 - THREE.MathUtils.smoothstep(3.2, 6.2, astronautWorldPosition.length())) * 0.65;
       const distortion = Math.max(lensStrength, tidalStrength);
-      innerRef.current.scale.set(1.0 - distortion * 0.3, 1.0 + distortion * 0.9, 1.0 - distortion * 0.22);
+      innerRef.current.scale.set(1.0 - distortion * 0.34, 1.0 + distortion * 0.9, 1.0 - distortion * 0.25);
     }
   });
 

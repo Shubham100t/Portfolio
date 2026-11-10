@@ -6,102 +6,62 @@ import * as THREE from "three";
 
 interface HawkingRadiationProps {
   eventHorizonRadius: number;
-  /** Sparse by design: this is a labelled visual metaphor, not a bright glow. */
   count?: number;
 }
 
-const vertexShader = /* glsl */ `
-  attribute float aPhase;
-  attribute float aSize;
-  uniform float uTime;
-  uniform float uEventHorizonRadius;
-  varying float vFlicker;
+interface SparkProps {
+  angle: number;
+  phase: number;
+  radius: number;
+}
 
-  void main() {
-    float journey = fract(aPhase + uTime * (0.022 + aSize * 0.003));
-    vec3 direction = normalize(position);
-    vec3 drift = vec3(
-      sin(uTime * 0.7 + aPhase * 31.0),
-      cos(uTime * 0.9 + aPhase * 17.0),
-      sin(uTime * 0.55 + aPhase * 23.0)
-    ) * 0.01;
-    // Stay outside the Schwarzschild radius: these cues sit just above the
-    // horizon instead of appearing inside the black shadow.
-    vec3 emittedPosition = direction * uEventHorizonRadius * mix(1.23, 1.62, journey) + drift;
-    vec4 mvPosition = modelViewMatrix * vec4(emittedPosition, 1.0);
-    gl_Position = projectionMatrix * mvPosition;
-    gl_PointSize = aSize * (1.0 - journey) * (44.0 / -mvPosition.z);
-    vFlicker = (1.0 - journey) * (0.4 + 0.6 * sin(uTime * 3.0 + aPhase * 80.0));
-  }
-`;
+function QuantumSpark({ angle, phase, radius }: SparkProps) {
+  const sparkRef = useRef<THREE.Mesh>(null!);
 
-const fragmentShader = /* glsl */ `
-  precision highp float;
-  varying float vFlicker;
-
-  void main() {
-    float distanceToCenter = length(gl_PointCoord - vec2(0.5));
-    float softPoint = 1.0 - smoothstep(0.05, 0.5, distanceToCenter);
-    vec3 quantumViolet = vec3(0.58, 0.12, 1.0);
-    gl_FragColor = vec4(quantumViolet, softPoint * vFlicker * 0.52);
-  }
-`;
-
-/**
- * An intentionally faint visualization of quantum vacuum fluctuations.
- * A stellar-mass or supermassive black hole would not emit visible Hawking
- * radiation; this is a cinematic teaching cue, kept below disk brightness.
- */
-export function HawkingRadiation({ eventHorizonRadius, count = 36 }: HawkingRadiationProps) {
-  const pointsRef = useRef<THREE.Points>(null!);
-  const { camera } = useThree();
-
-  const geometry = useMemo(() => {
-    const positions = new Float32Array(count * 3);
-    const phases = new Float32Array(count);
-    const sizes = new Float32Array(count);
-
-    for (let index = 0; index < count; index += 1) {
-      // A camera-facing rim concentrates the sparse sparks around the
-      // silhouette, where the horizon is actually visible to the viewer.
-      const theta = Math.random() * Math.PI * 2;
-      positions[index * 3] = Math.cos(theta);
-      positions[index * 3 + 1] = Math.sin(theta);
-      positions[index * 3 + 2] = (Math.random() - 0.5) * 0.08;
-      phases[index] = Math.random();
-      sizes[index] = 0.3 + Math.random() * 0.45;
-    }
-
-    const bufferGeometry = new THREE.BufferGeometry();
-    bufferGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    bufferGeometry.setAttribute("aPhase", new THREE.BufferAttribute(phases, 1));
-    bufferGeometry.setAttribute("aSize", new THREE.BufferAttribute(sizes, 1));
-    return bufferGeometry;
-  }, [count, eventHorizonRadius]);
-
-  const uniforms = useMemo(
-    () => ({ uTime: { value: 0 }, uEventHorizonRadius: { value: eventHorizonRadius } }),
-    [eventHorizonRadius]
-  );
-
-  useFrame((_, delta) => {
-    uniforms.uTime.value += delta;
-    // Points on the far side stay behind the event horizon rather than bleeding
-    // through it, while the visible hemisphere gently follows the viewer.
-    if (pointsRef.current) pointsRef.current.quaternion.copy(camera.quaternion);
+  useFrame(({ clock }) => {
+    if (!sparkRef.current) return;
+    const flicker = 0.55 + 0.45 * Math.sin(clock.getElapsedTime() * 5.0 + phase);
+    sparkRef.current.scale.setScalar(0.65 + flicker * 0.55);
   });
 
   return (
-    <points ref={pointsRef} geometry={geometry} renderOrder={3}>
-      <shaderMaterial
-        vertexShader={vertexShader}
-        fragmentShader={fragmentShader}
-        uniforms={uniforms}
+    <mesh ref={sparkRef} position={[Math.cos(angle) * radius, Math.sin(angle) * radius, 0]} renderOrder={4}>
+      <sphereGeometry args={[0.038, 10, 10]} />
+      <meshBasicMaterial
+        color="#a855f7"
         transparent
-        depthWrite={false}
+        opacity={0.95}
         toneMapped={false}
+        depthWrite={false}
         blending={THREE.AdditiveBlending}
       />
-    </points>
+    </mesh>
+  );
+}
+
+/**
+ * A visible but sparse quantum-vacuum visualization. The sparks are placed on
+ * the viewer-facing horizon rim so they cannot be hidden inside the shadow.
+ */
+export function HawkingRadiation({ eventHorizonRadius, count = 18 }: HawkingRadiationProps) {
+  const rimRef = useRef<THREE.Group>(null!);
+  const { camera } = useThree();
+  const sparks = useMemo(
+    () => Array.from({ length: count }, (_, index) => ({
+      angle: (index / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.18,
+      phase: Math.random() * Math.PI * 2,
+      radius: eventHorizonRadius * (1.12 + Math.random() * 0.14),
+    })),
+    [count, eventHorizonRadius]
+  );
+
+  useFrame(() => {
+    if (rimRef.current) rimRef.current.quaternion.copy(camera.quaternion);
+  });
+
+  return (
+    <group ref={rimRef} renderOrder={4}>
+      {sparks.map((spark, index) => <QuantumSpark key={index} {...spark} />)}
+    </group>
   );
 }
