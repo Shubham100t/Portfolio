@@ -69,6 +69,10 @@ void main() {
   vec2 spiralCoords = vec2(dynamicAngle * 4.0 - logR * 6.0, r * 2.5);
   float turbulence = fbm(spiralCoords);
   float plasmaDensity = smoothstep(0.18, 0.82, turbulence);
+
+  // A restrained moving caustic ripple makes the bent rear light read as
+  // spacetime distortion rather than a static decorative arc.
+  float lensRipple = 0.84 + 0.16 * sin(dynamicAngle * 9.0 + logR * 7.0);
   
   // 4. RADIAL FALLOFF
   float innerFalloff = smoothstep(uInnerRadius, uInnerRadius + 0.25, r);
@@ -103,7 +107,7 @@ void main() {
   vec3 photonColor = vec3(1.0, 0.94, 0.85) * photonSpike;
   
   // 8. COMBINED INTENSITY
-  float totalWeight = verticalWeight * inclinationWeight;
+  float totalWeight = verticalWeight * inclinationWeight * lensRipple;
   vec3 finalColor = (plasmaColor * plasmaDensity * baseDensity * dopplerBoost + photonColor) * totalWeight;
   float alpha = clamp((baseDensity * plasmaDensity * 0.9 + photonSpike * 0.85) * totalWeight * (0.5 + 0.5 * dopplerBoost), 0.0, 1.0);
   

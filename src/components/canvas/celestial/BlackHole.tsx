@@ -9,6 +9,7 @@ import {
   lensedHaloVertexShader,
   lensedHaloFragmentShader,
 } from "@/shaders/blackhole";
+import { HawkingRadiation } from "./HawkingRadiation";
 
 interface BlackHoleProps {
   position?: [number, number, number];
@@ -164,6 +165,10 @@ export function BlackHole({
           blending={THREE.AdditiveBlending}
         />
       </mesh>
+
+      {/* Deliberately sparse quantum-fluctuation visualization, not a literal
+          visible Hawking glow for this supermassive object. */}
+      <HawkingRadiation eventHorizonRadius={eventHorizonRadius} count={72} />
     </group>
   );
 }
