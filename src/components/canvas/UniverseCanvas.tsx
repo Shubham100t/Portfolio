@@ -6,17 +6,17 @@ import { SceneManager } from "./SceneManager";
 
 export function UniverseCanvas() {
   return (
-    <div className="fixed inset-0 w-full h-full bg-[#020617] -z-10 overflow-hidden cursor-grab active:cursor-grabbing">
+    <div className="absolute inset-0 w-full h-full z-0 overflow-hidden cursor-grab active:cursor-grabbing bg-black">
       <Canvas
         camera={{
-          fov: 52,
+          fov: 50,
           near: 0.1,
-          far: 2500,
-          position: [0, 1.0, 5.5],
+          far: 3000,
+          position: [0, 1.2, 5.0],
         }}
         gl={{
           antialias: true,
-          alpha: false,
+          alpha: true,
           powerPreference: "high-performance",
           stencil: false,
           depth: true,

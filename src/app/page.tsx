@@ -11,7 +11,7 @@ const UniverseCanvas = dynamic(
 
 export default function CosmosHome() {
   return (
-    <main className="relative w-screen h-screen overflow-hidden bg-[#020617]">
+    <main className="relative w-screen h-screen overflow-hidden bg-black select-none">
       {/* Persistent Three.js Canvas */}
       <UniverseCanvas />
 
