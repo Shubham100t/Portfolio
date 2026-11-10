@@ -3,6 +3,7 @@
 import React, { useRef, useMemo, forwardRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
+import { useUniverseStore } from "@/stores/useUniverseStore";
 
 /**
  * BasicAstronaut
@@ -12,6 +13,7 @@ import * as THREE from "three";
 export const BasicAstronaut = forwardRef<THREE.Group>(function BasicAstronaut(_props, ref) {
   const innerRef = useRef<THREE.Group>(null!);
   const { camera } = useThree();
+  const cinematicProgress = useUniverseStore((state) => state.cinematicProgress);
   const astronautWorldPosition = useMemo(() => new THREE.Vector3(), []);
   const cameraToAstronaut = useMemo(() => new THREE.Vector3(), []);
   const closestApproach = useMemo(() => new THREE.Vector3(), []);
@@ -75,8 +77,10 @@ export const BasicAstronaut = forwardRef<THREE.Group>(function BasicAstronaut(_p
       // The near-horizon segment also applies a mild tidal stretch so the
       // descent is visibly affected even before an exact camera alignment.
       const tidalStrength = (1.0 - THREE.MathUtils.smoothstep(3.2, 6.2, astronautWorldPosition.length())) * 0.65;
-      const distortion = Math.max(lensStrength, tidalStrength);
-      innerRef.current.scale.set(1.0 - distortion * 0.34, 1.0 + distortion * 0.9, 1.0 - distortion * 0.25);
+      const cinematicWarp = THREE.MathUtils.smoothstep(cinematicProgress, 0.55, 0.88) * 0.58;
+      const distortion = Math.max(lensStrength, tidalStrength, cinematicWarp);
+      innerRef.current.scale.set(1.0 - distortion * 0.42, 1.0 + distortion * 1.3, 1.0 - distortion * 0.3);
+      innerRef.current.rotation.z += Math.sin(t * 2.2) * distortion * 0.1;
     }
   });
 

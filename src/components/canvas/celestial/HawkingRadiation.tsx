@@ -9,28 +9,40 @@ interface HawkingRadiationProps {
   count?: number;
 }
 
-interface SparkProps {
+interface BurstSparkProps {
   angle: number;
   phase: number;
-  radius: number;
+  speed: number;
+  eventHorizonRadius: number;
+  color: string;
 }
 
-function QuantumSpark({ angle, phase, radius }: SparkProps) {
+function BurstSpark({ angle, phase, speed, eventHorizonRadius, color }: BurstSparkProps) {
   const sparkRef = useRef<THREE.Mesh>(null!);
+  const materialRef = useRef<THREE.MeshBasicMaterial>(null!);
 
   useFrame(({ clock }) => {
-    if (!sparkRef.current) return;
-    const flicker = 0.55 + 0.45 * Math.sin(clock.getElapsedTime() * 5.0 + phase);
-    sparkRef.current.scale.setScalar(0.65 + flicker * 0.55);
+    if (!sparkRef.current || !materialRef.current) return;
+    const cycle = (clock.getElapsedTime() * speed + phase) % 1;
+    const ignite = THREE.MathUtils.smoothstep(cycle, 0.03, 0.12);
+    const fade = 1 - THREE.MathUtils.smoothstep(cycle, 0.28, 0.55);
+    const burst = ignite * fade;
+    const radius = eventHorizonRadius * (1.09 + cycle * 1.25);
+    const curvedAngle = angle + Math.sin(cycle * Math.PI) * 0.18;
+
+    sparkRef.current.position.set(Math.cos(curvedAngle) * radius, Math.sin(curvedAngle) * radius, 0);
+    sparkRef.current.scale.setScalar(0.35 + burst * 1.45);
+    materialRef.current.opacity = burst * 0.95;
   });
 
   return (
-    <mesh ref={sparkRef} position={[Math.cos(angle) * radius, Math.sin(angle) * radius, 0]} renderOrder={4}>
-      <sphereGeometry args={[0.038, 10, 10]} />
+    <mesh ref={sparkRef} renderOrder={4}>
+      <sphereGeometry args={[0.045, 12, 12]} />
       <meshBasicMaterial
-        color="#a855f7"
+        ref={materialRef}
+        color={color}
         transparent
-        opacity={0.95}
+        opacity={0}
         toneMapped={false}
         depthWrite={false}
         blending={THREE.AdditiveBlending}
@@ -40,19 +52,22 @@ function QuantumSpark({ angle, phase, radius }: SparkProps) {
 }
 
 /**
- * A visible but sparse quantum-vacuum visualization. The sparks are placed on
- * the viewer-facing horizon rim so they cannot be hidden inside the shadow.
+ * Stylized quantum-vacuum bursts. Unlike a static ring, only a few emitters
+ * ignite at once, producing irregular violet/cyan sparks flowing outward from
+ * the visible horizon. This is cinematic visualization, not literal Hawking
+ * luminosity from a supermassive black hole.
  */
-export function HawkingRadiation({ eventHorizonRadius, count = 18 }: HawkingRadiationProps) {
+export function HawkingRadiation({ eventHorizonRadius, count = 13 }: HawkingRadiationProps) {
   const rimRef = useRef<THREE.Group>(null!);
   const { camera } = useThree();
-  const sparks = useMemo(
-    () => Array.from({ length: count }, (_, index) => ({
-      angle: (index / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.18,
-      phase: Math.random() * Math.PI * 2,
-      radius: eventHorizonRadius * (1.12 + Math.random() * 0.14),
+  const bursts = useMemo(
+    () => Array.from({ length: count }, () => ({
+      angle: Math.random() * Math.PI * 2,
+      phase: Math.random(),
+      speed: 0.16 + Math.random() * 0.12,
+      color: Math.random() > 0.28 ? "#a855f7" : "#38bdf8",
     })),
-    [count, eventHorizonRadius]
+    [count]
   );
 
   useFrame(() => {
@@ -61,7 +76,9 @@ export function HawkingRadiation({ eventHorizonRadius, count = 18 }: HawkingRadi
 
   return (
     <group ref={rimRef} renderOrder={4}>
-      {sparks.map((spark, index) => <QuantumSpark key={index} {...spark} />)}
+      {bursts.map((burst, index) => (
+        <BurstSpark key={index} {...burst} eventHorizonRadius={eventHorizonRadius} />
+      ))}
     </group>
   );
 }

@@ -34,7 +34,6 @@ export function BlackHole({
   const haloRef = useRef<THREE.Mesh>(null!);
   const diskMatRef = useRef<THREE.ShaderMaterial>(null!);
   const haloMatRef = useRef<THREE.ShaderMaterial>(null!);
-  const photonRingRef = useRef<THREE.Mesh>(null!);
   const diskWorldNormal = useMemo(() => new THREE.Vector3(), []);
   const diskWorldQuaternion = useMemo(() => new THREE.Quaternion(), []);
 
@@ -104,12 +103,6 @@ export function BlackHole({
       diskRef.current.rotation.y += delta * 0.012;
     }
 
-    // 4. Photon ring micro-pulsation
-    if (photonRingRef.current) {
-      photonRingRef.current.quaternion.copy(camera.quaternion);
-      const osc = 1.0 + Math.sin(diskUniforms.uTime.value * 2.8) * 0.007;
-      photonRingRef.current.scale.set(osc, osc, osc);
-    }
   });
 
   return (
@@ -121,19 +114,7 @@ export function BlackHole({
         <meshBasicMaterial color="#000000" />
       </mesh>
 
-      {/* 2. PHOTON SPHERE RING: 1.5 Rs incandescent emission boundary */}
-      <mesh ref={photonRingRef} renderOrder={2}>
-        <ringGeometry args={[photonRadius - 0.035, photonRadius + 0.035, 128]} />
-        <meshBasicMaterial
-          color="#fffbeb"
-          side={THREE.DoubleSide}
-          transparent={true}
-          opacity={0.92}
-          blending={THREE.AdditiveBlending}
-        />
-      </mesh>
-
-      {/* 3. PRIMARY EQUATORIAL ACCRETION DISK */}
+      {/* 2. PRIMARY EQUATORIAL ACCRETION DISK */}
       {/* The single, physical Keplerian disk in 3D space */}
       <mesh ref={diskRef} rotation={[-Math.PI * 0.42, 0.06, 0]} renderOrder={0}>
         <ringGeometry args={[diskInnerRadius, diskOuterRadius, 128, 64]} />
@@ -149,7 +130,7 @@ export function BlackHole({
         />
       </mesh>
 
-      {/* 4. DYNAMIC VIEW-ALIGNED LENSED SECONDARY HALO */}
+      {/* 3. DYNAMIC VIEW-ALIGNED LENSED SECONDARY HALO */}
       {/* Simulates light from the back of the disk bent over the top and bottom toward the observer */}
       {/* Centered at [0,0,0], perfectly billboarding to camera, zero front protrusion */}
       <mesh ref={haloRef} renderOrder={0}>
@@ -168,7 +149,7 @@ export function BlackHole({
 
       {/* Deliberately sparse quantum-fluctuation visualization, not a literal
           visible Hawking glow for this supermassive object. */}
-      <HawkingRadiation eventHorizonRadius={eventHorizonRadius} count={18} />
+      <HawkingRadiation eventHorizonRadius={eventHorizonRadius} count={13} />
     </group>
   );
 }
