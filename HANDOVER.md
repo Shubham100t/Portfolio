@@ -2,9 +2,9 @@
 
 **Project:** COSMOS — An Interactive 3D Portfolio Universe  
 **Current Date:** 2026-11-10  
-**Current Phase:** Phase 2 Complete -> Ready for Phase 3 (Astronaut & Cinematic Timeline Orchestration)  
-**Git Branch:** `phase-2-black-hole` (Clean, Verified)  
-**Latest Milestone:** Cinematic Black Hole (Gargantua Singularity, Keplerian Accretion Disk, Relativistic Doppler Beaming, Lensed Halo & Gravitational Lensing)
+**Current Phase:** Phase 2 Complete (Verified & Polished) -> Ready for Phase 3 (Astronaut & Cinematic Timeline Orchestration)  
+**Git Branch:** `phase-2-black-hole` (Clean, Committed)  
+**Latest Commit:** `236db59` (`fix(phase-2): camera-aligned secondary lensed halo preventing front protrusion and multi-object artifacts`)
 
 ---
 
@@ -30,9 +30,9 @@ COSMOS is an ultra-realistic, cinematic, interactive 3D universe presenting a so
 ## 2. Completed Work So Far
 
 ### Phase 0: System Architecture & Blueprint (Complete)
-- Master architecture, folder structure, state model, and phased roadmap established and approved.
+- Master architecture, directory structure, state models, and phased roadmap established and approved.
 
-### Phase 1: 3D Foundation (Complete & Verified on `phase-1-scene-foundation`)
+### Phase 1: 3D Foundation (Complete on `phase-1-scene-foundation`)
 - **Framework Setup**: Next.js 14.2.5 (App Router), React 18, TypeScript, Tailwind CSS, Lucide icons.
 - **Persistent Canvas**: `src/components/canvas/UniverseCanvas.tsx` configured with `z-0` stacking, high-performance WebGL settings, and dynamic client-side loading (`ssr: false`).
 - **Scene Assembly**: `src/components/canvas/SceneManager.tsx` hosting `OrbitControls`, cinematic lighting (ambient, key, cyan rim, warm bounce), background stars, cosmic dust, and the central astronaut.
@@ -42,26 +42,31 @@ COSMOS is an ultra-realistic, cinematic, interactive 3D universe presenting a so
 - **Global State Store**: `src/stores/useUniverseStore.ts` tracking mode, destination, quality tiers, and telemetry coordinates.
 
 ### Phase 2: Cinematic Black Hole (Complete & Verified on `phase-2-black-hole`)
-- **Webpack 5 GLSL Asset Loading**: Native Webpack 5 `type: 'asset/source'` configured in `next.config.mjs` with TypeScript module declarations in `src/types/shaders.d.ts` (zero external npm loader dependencies).
-- **Accretion Disk Shaders** (`src/shaders/blackhole/accretionDisk.vert.glsl` & `accretionDisk.frag.glsl`):
-  - Schwarzschild inner boundary cutoff ($R_{in} = 1.65$) and outer edge falloff ($R_{out} = 7.2$).
-  - Keplerian differential rotation where angular frequency $\Omega(r) \propto r^{-1.5}$.
-  - Multi-octave procedural logarithmic spiral plasma turbulence and micro-filaments.
-  - Relativistic Doppler frequency beaming ($\beta = \sqrt{R_s / 2r}$, $\delta = \frac{1}{\gamma(1 - \beta \cos\alpha)}$) dynamically boosting luminosity on the approaching side (white-hot/cyan) and dimming/redshifting the receding side (amber/crimson).
-  - Razor-thin incandescent photon ring emission spike at $1.5 R_s$.
-- **Gravitational Lensing Shaders** (`src/shaders/blackhole/gravitationalLens.vert.glsl` & `gravitationalLens.frag.glsl`):
-  - Relativistic deflection angle $\Delta \theta \propto 2R_s / \Delta b$ warping starlight radially inwards toward the singularity.
-  - Einstein ring caustic glow and smooth shadow silhouette boundary.
+- **Webpack 5 GLSL Asset Loading**: Native Webpack 5 `type: 'asset/source'` configured in `next.config.mjs` for `.glsl`, `.vert`, and `.frag` files with TypeScript declarations in `src/types/shaders.d.ts` (zero external npm loader dependencies).
+- **Relativistic Shaders** (`src/shaders/blackhole/`):
+  - `accretionDisk.vert.glsl` & `accretionDisk.frag.glsl`:
+    - Inner Schwarzschild boundary cutoff ($R_{in} = 1.65$) and outer edge falloff ($R_{out} = 6.8$).
+    - Keplerian differential rotation where angular frequency $\Omega(r) \propto r^{-1.5}$.
+    - Multi-octave procedural logarithmic spiral plasma turbulence and micro-filaments.
+    - Relativistic Doppler frequency beaming ($\beta = \sqrt{R_s / 2r}$, $\delta = \frac{1}{\gamma(1 - \beta \cos\alpha)}$) dynamically boosting luminosity on the approaching side (white-hot/cyan) and dimming/redshifting the receding side (amber/crimson).
+    - Razor-thin incandescent photon ring emission spike at $1.5 R_s$.
+  - `lensedHalo.vert.glsl` & `lensedHalo.frag.glsl`:
+    - Dynamic camera-aligned lensed secondary halo simulating light from the rear of the disk bent over the top and bottom of the event horizon.
+    - Concentrates intensity vertically ($\text{pow}(|\sin\phi|, 1.6)$) and smoothly fades horizontally at the equator where the physical disk resides.
+    - Modulates intensity based on view inclination ($\text{clamp}(1 - |\vec{v}_{view} \cdot \vec{n}_{disk}|^{1.4}, 0, 1)$), naturally disappearing when looking straight down from the pole.
+    - Eliminates any rigid intersecting rings or awkward front protrusions when orbiting horizontally in 360°.
+  - `gravitationalLens.vert.glsl` & `gravitationalLens.frag.glsl`:
+    - Curved spacetime deflection shader warping starlight radially inwards toward the singularity.
 - **Celestial BlackHole Component** (`src/components/canvas/celestial/BlackHole.tsx`):
-  - Schwarzschild event horizon sphere (absolute black core).
-  - Incandescent photon ring at $1.5 R_s$ with dynamic pulsation.
-  - Primary equatorial accretion disk with Keplerian plasma dynamics.
-  - Secondary vertical lensed accretion halo (simulating light from behind the horizon bent over and under the singularity).
-  - Gravitational lensing curved spacetime shell.
+  - **Event Horizon**: Pure black sphere absorbing all incident light ($R_s = 1.35$, `renderOrder={1}`).
+  - **Photon Sphere Ring**: Incandescent ring at $1.5 R_s$ with dynamic harmonic pulsation (`renderOrder={2}`).
+  - **Primary Equatorial Accretion Disk**: Single physical Keplerian plasma disc in 3D space (`renderOrder={0}`).
+  - **View-Aligned Lensed Halo**: Symmetrically billboarding to camera in `useFrame`, hugging the singularity silhouette without front protrusion.
 - **Scene Integration & Post-Processing** (`src/components/canvas/SceneManager.tsx`):
   - Mounted `<BlackHole />` at cosmic origin `[0, 0, 0]`.
-  - Repositioned `<BasicAstronaut />` to standoff coordinates `[0, -0.15, 4.2]` facing the singularity.
-  - Configured `@react-three/postprocessing` `<EffectComposer>` with `<Bloom>` (`luminanceThreshold: 0.75`, `mipmapBlur: true`) for authentic incandescent glow.
+  - Positioned `<BasicAstronaut />` at standoff coordinates `[0, -0.15, 4.2]` facing the singularity.
+  - Integrated `@react-three/postprocessing` `<EffectComposer>` with `<Bloom>` (`luminanceThreshold: 0.75`, `mipmapBlur: true`) for authentic incandescent glow.
+  - Camera positioned at `[0, 1.5, 9.2]` in `src/components/canvas/UniverseCanvas.tsx`.
 
 ---
 
@@ -71,10 +76,13 @@ COSMOS is an ultra-realistic, cinematic, interactive 3D universe presenting a so
    - Never assign `-z-10` to a fixed/absolute Canvas container if parent elements or `body` have background colors (`bg-[#020617]`). In CSS, elements with negative z-index are painted behind the background of the stacking context root, causing a black screen.
    - Correct approach: Canvas container at `z-0` with `bg-black`, and HUD overlays on top at `z-10` with `pointer-events-none`.
 2. **GLSL Bundling in Next.js 14**:
-   - Do not rely on deprecated Webpack 4 loaders (`raw-loader`, `glslify-loader`). Use Webpack 5's native `type: 'asset/source'` rule in `next.config.mjs` alongside a TypeScript module declaration file (`src/types/shaders.d.ts`).
-3. **R3F EffectComposer Props**:
+   - Do not use deprecated Webpack 4 loaders (`raw-loader`, `glslify-loader`). Use Webpack 5's native `type: 'asset/source'` rule in `next.config.mjs` alongside a TypeScript module declaration file (`src/types/shaders.d.ts`).
+3. **Secondary Lensed Halos in WebGL**:
+   - Never use a static perpendicular 3D mesh (`rotation={[0, 0, 0]}`) for the lensed halo of a black hole. When the user orbits horizontally, two rigid rings slice through each other at 90°, and half of the halo sticks out awkwardly in front of the black hole.
+   - The correct approach is a single physical equatorial disk in 3D plus a camera-aligned billboard halo centered at `[0, 0, 0]` whose shader weights intensity vertically and modulates with view inclination. This ensures the halo is always seen hugging the top and bottom of the event horizon from any 360° orbit angle.
+4. **R3F EffectComposer Props**:
    - In `@react-three/postprocessing`, pass `enableNormalPass={false}` instead of `disableNormalPass` to satisfy TypeScript types.
-4. **PowerShell Windows Encoding**:
+5. **PowerShell Windows Encoding**:
    - In PowerShell 5.1, use single-quoted here-strings (`@' ... '@`) or UTF8 without BOM (`[System.IO.File]::WriteAllText($path, $content, $utf8NoBom)`) to prevent unintended variable/escape evaluation.
 
 ---
@@ -95,6 +103,8 @@ Orchestrate the 55-second cinematic prologue where the astronaut floats weightle
    - Cinematic Letterboxing (2.39:1 aspect ratio bars).
    - "Skip Intro" button smoothly transitioning camera to exploration mode.
    - Subtitle / narrative telemetry log sequence.
+4. **Integration**:
+   - Seamless transition hook in `useUniverseStore.ts` (`mode: 'cinematic'` -> `mode: 'exploring'`).
 
 ---
 
@@ -102,7 +112,7 @@ Orchestrate the 55-second cinematic prologue where the astronaut floats weightle
 
 - **Phase 0:** Product Architecture & Blueprint (Done)
 - **Phase 1:** 3D Foundation & Persistent Scene (Done)
-- **Phase 2:** Cinematic Black Hole (Done)
+- **Phase 2:** Cinematic Black Hole (Done & Polished)
 - **Phase 3:** Astronaut & Cinematic Timeline Orchestration (Next)
 - **Phase 4:** Spaghettification GLSL Vertex Shader
 - **Phase 5:** Particle Transformation & Galactic Assembly (Continuous Particle Buffer)
