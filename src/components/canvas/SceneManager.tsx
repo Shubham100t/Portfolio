@@ -4,14 +4,21 @@ import React from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Stars } from "@react-three/drei";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
+import { useRef } from "react";
+import * as THREE from "three";
 import { CosmicDust } from "./environment/CosmicDust";
 import { BasicAstronaut } from "./cinematic/BasicAstronaut";
+import { CinematicDirector } from "./cinematic/CinematicDirector";
 import { BlackHole } from "./celestial/BlackHole";
 import { useUniverseStore } from "@/stores/useUniverseStore";
 
 export function SceneManager() {
   const { camera } = useThree();
+  const mode = useUniverseStore((state) => state.mode);
   const setCameraCoords = useUniverseStore((state) => state.setCameraCoords);
+
+  // Ref forwarded to BasicAstronaut — CinematicDirector animates this group
+  const astronautRef = useRef<THREE.Group>(null);
 
   // Sync camera position to global HUD telemetry
   useFrame(() => {
@@ -25,8 +32,10 @@ export function SceneManager() {
   return (
     <>
       {/* --- ORBIT & NAVIGATION CONTROLS --- */}
+      {/* Disabled during cinematic mode so GSAP owns the camera */}
       <OrbitControls
         makeDefault
+        enabled={mode !== "cinematic"}
         enableDamping
         dampingFactor={0.06}
         minDistance={1.8}
@@ -37,18 +46,12 @@ export function SceneManager() {
         target={[0, 0.4, 0]}
       />
 
+      {/* --- CINEMATIC TIMELINE DIRECTOR (R3F inner) --- */}
+      {mode === "cinematic" && <CinematicDirector astronautRef={astronautRef} />}
+
       {/* --- CINEMATIC LIGHTING --- */}
-      {/* Deep-space ambient baseline */}
       <ambientLight intensity={0.4} color="#0f172a" />
-
-      {/* Frontal Stellar Key Light */}
-      <directionalLight
-        position={[6, 8, 8]}
-        intensity={2.2}
-        color="#ffffff"
-      />
-
-      {/* Accretion Disk Incandescent Radiance (Warm Gold fill from singularity) */}
+      <directionalLight position={[6, 8, 8]} intensity={2.2} color="#ffffff" />
       <pointLight
         position={[0, 0, 0]}
         intensity={3.8}
@@ -56,23 +59,10 @@ export function SceneManager() {
         distance={25}
         decay={1.8}
       />
-
-      {/* Relativistic Blueshift Rim Light */}
-      <directionalLight
-        position={[-8, 3, 4]}
-        intensity={1.8}
-        color="#38bdf8"
-      />
-
-      {/* Deep Void Backlight */}
-      <directionalLight
-        position={[0, -6, -8]}
-        intensity={1.2}
-        color="#1e1b4b"
-      />
+      <directionalLight position={[-8, 3, 4]} intensity={1.8} color="#38bdf8" />
+      <directionalLight position={[0, -6, -8]} intensity={1.2} color="#1e1b4b" />
 
       {/* --- ENVIRONMENT --- */}
-      {/* Twinkling background star field */}
       <Stars
         radius={220}
         depth={90}
@@ -82,12 +72,9 @@ export function SceneManager() {
         fade
         speed={1.0}
       />
-
-      {/* Local floating cosmic dust particles */}
       <CosmicDust count={750} />
 
       {/* --- CELESTIAL SPECTACLE: CINEMATIC BLACK HOLE --- */}
-      {/* Gargantua singularity located at cosmic origin [0, 0, 0] */}
       <BlackHole
         position={[0, 0, 0]}
         eventHorizonRadius={1.35}
@@ -97,9 +84,9 @@ export function SceneManager() {
       />
 
       {/* --- CENTRAL PROTAGONIST (STANDOFF POSITION) --- */}
-      {/* Astronaut positioned at standoff coordinates facing the singularity */}
+      {/* Outer group at standoff; CinematicDirector animates the inner group via ref */}
       <group position={[0, -0.15, 4.2]} rotation={[0, 0.25, 0]}>
-        <BasicAstronaut />
+        <BasicAstronaut ref={astronautRef} />
       </group>
 
       {/* --- POST-PROCESSING: PHOTON RADIANCE & BLOOM --- */}

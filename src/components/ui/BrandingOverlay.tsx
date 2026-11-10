@@ -99,7 +99,7 @@ export function BrandingOverlay() {
       <footer className="flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-400 w-full">
         <div className="flex items-center gap-2 pointer-events-auto">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-          <span className="tracking-wider text-slate-300">PHASE 1 // 3D FOUNDATION ONLINE</span>
+          <span className="tracking-wider text-slate-300">PHASE 3 // CINEMATIC TIMELINE ONLINE</span>
         </div>
 
         <div className="tracking-widest uppercase text-slate-400 text-[10px] hidden sm:block">

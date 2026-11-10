@@ -1,4 +1,4 @@
-﻿@tailwind base;
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -41,4 +41,22 @@ body {
 
 .hud-border {
   border-color: rgba(56, 189, 248, 0.25);
+}
+
+/* Phase 3: Cinematic subtitle fade-slide-up animation */
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes timeDilation {
+  0%, 100% { opacity: 0.08; transform: scale(1); }
+  45% { opacity: 0.22; transform: scale(1.015); }
+  50% { opacity: 0.05; transform: scale(0.995); }
 }

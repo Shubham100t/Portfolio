@@ -2,9 +2,8 @@
 
 **Project:** COSMOS — An Interactive 3D Portfolio Universe  
 **Current Date:** 2026-11-10  
-**Current Phase:** Phase 2 Complete (Verified & Polished) -> Ready for Phase 3 (Astronaut & Cinematic Timeline Orchestration)  
-**Git Branch:** `phase-2-black-hole` (Clean, Committed)  
-**Latest Commit:** `236db59` (`fix(phase-2): camera-aligned secondary lensed halo preventing front protrusion and multi-object artifacts`)
+**Current Phase:** Phase 3 Complete (Cinematic Timeline Orchestration) -> Ready for Phase 4 (Spaghettification GLSL Vertex Shader)  
+**Git Branch:** `phase-3-cinematic-orchestration`  
 
 ---
 
@@ -68,6 +67,13 @@ COSMOS is an ultra-realistic, cinematic, interactive 3D universe presenting a so
   - Integrated `@react-three/postprocessing` `<EffectComposer>` with `<Bloom>` (`luminanceThreshold: 0.75`, `mipmapBlur: true`) for authentic incandescent glow.
   - Camera positioned at `[0, 1.5, 9.2]` in `src/components/canvas/UniverseCanvas.tsx`.
 
+### Phase 3: Astronaut & Cinematic Timeline Orchestration (Complete on `phase-3-cinematic-orchestration`)
+- **55-second director:** `CinematicDirector.tsx` uses a GSAP master timeline for the four planned beats: establishing drift, thruster approach, gravitational pull, and photon-ring descent.
+- **Cinematic camera hand-off:** The camera stays focused on the singularity throughout the dolly, OrbitControls are disabled while the director owns it, and control returns cleanly in exploration mode.
+- **Astronaut choreography:** The astronaut now has an outer director-controlled group plus an inner additive zero-G animation group, preserving its natural float while it descends.
+- **Prologue UI:** `CinematicOverlay.tsx` supplies 2.39:1 letterboxing, timed subtitles/telemetry, escalating gravity and event-horizon alarms, a progress readout, and a keyboard-accessible Skip Intro action (button or Escape).
+- **State integration:** The store starts in `cinematic` mode and exposes `cinematicProgress`; completion or skip transitions to `exploring`.
+
 ---
 
 ## 3. Important Implementation Lessons & Bug Fixes
@@ -113,7 +119,7 @@ Orchestrate the 55-second cinematic prologue where the astronaut floats weightle
 - **Phase 0:** Product Architecture & Blueprint (Done)
 - **Phase 1:** 3D Foundation & Persistent Scene (Done)
 - **Phase 2:** Cinematic Black Hole (Done & Polished)
-- **Phase 3:** Astronaut & Cinematic Timeline Orchestration (Next)
+- **Phase 3:** Astronaut & Cinematic Timeline Orchestration (Done)
 - **Phase 4:** Spaghettification GLSL Vertex Shader
 - **Phase 5:** Particle Transformation & Galactic Assembly (Continuous Particle Buffer)
 - **Phase 6:** COSMOS Cinematic Completion (Audio sync, Skip Intro, ARIA intro)
@@ -131,6 +137,6 @@ Orchestrate the 55-second cinematic prologue where the astronaut floats weightle
 Copy and paste the prompt in the next chat:
 ```markdown
 We are developing COSMOS (an ultra-realistic 3D portfolio universe). 
-Phase 0, Phase 1, and Phase 2 are complete and verified on branch `phase-2-black-hole`.
-Please read `HANDOVER.md` in the root workspace and proceed directly with Phase 3: Astronaut & Cinematic Timeline Orchestration.
+Phase 0 through Phase 3 are complete on branch `phase-3-cinematic-orchestration`.
+Please read `HANDOVER.md` in the root workspace and proceed directly with Phase 4: Spaghettification GLSL Vertex Shader.
 ```
