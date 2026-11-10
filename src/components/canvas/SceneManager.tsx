@@ -1,10 +1,12 @@
-﻿"use client";
+"use client";
 
 import React from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Stars } from "@react-three/drei";
+import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import { CosmicDust } from "./environment/CosmicDust";
 import { BasicAstronaut } from "./cinematic/BasicAstronaut";
+import { BlackHole } from "./celestial/BlackHole";
 import { useUniverseStore } from "@/stores/useUniverseStore";
 
 export function SceneManager() {
@@ -27,64 +29,88 @@ export function SceneManager() {
         makeDefault
         enableDamping
         dampingFactor={0.06}
-        minDistance={1.5}
-        maxDistance={35}
+        minDistance={1.8}
+        maxDistance={60}
         rotateSpeed={0.7}
         panSpeed={0.6}
         zoomSpeed={0.8}
-        target={[0, 0.75, 0]}
+        target={[0, 0.4, 0]}
       />
 
       {/* --- CINEMATIC LIGHTING --- */}
-      {/* Deep-space ambient baseline fill */}
-      <ambientLight intensity={0.8} color="#1e293b" />
+      {/* Deep-space ambient baseline */}
+      <ambientLight intensity={0.4} color="#0f172a" />
 
-      {/* Primary Key Light: Frontal stellar radiance illuminating astronaut and gold visor */}
+      {/* Frontal Stellar Key Light */}
       <directionalLight
         position={[6, 8, 8]}
-        intensity={2.6}
+        intensity={2.2}
         color="#ffffff"
       />
 
-      {/* Cyan Fill Light: Subtle galactic illumination from the left */}
-      <directionalLight
-        position={[-6, 3, 6]}
-        intensity={1.2}
-        color="#93c5fd"
+      {/* Accretion Disk Incandescent Radiance (Warm Gold fill from singularity) */}
+      <pointLight
+        position={[0, 0, 0]}
+        intensity={3.8}
+        color="#fbbf24"
+        distance={25}
+        decay={1.8}
       />
 
-      {/* Relativistic Rim Light: Sharp edge definition against the cosmic void */}
+      {/* Relativistic Blueshift Rim Light */}
       <directionalLight
-        position={[-8, -5, -7]}
-        intensity={2.2}
+        position={[-8, 3, 4]}
+        intensity={1.8}
         color="#38bdf8"
       />
 
-      {/* Warm Nebula Bounce Light */}
-      <pointLight
-        position={[2, -4, 4]}
-        intensity={0.8}
-        color="#fbbf24"
-        distance={30}
+      {/* Deep Void Backlight */}
+      <directionalLight
+        position={[0, -6, -8]}
+        intensity={1.2}
+        color="#1e1b4b"
       />
 
       {/* --- ENVIRONMENT --- */}
-      {/* Ultra-reliable, twinkling background star field */}
+      {/* Twinkling background star field */}
       <Stars
-        radius={150}
-        depth={80}
-        count={7500}
-        factor={5}
-        saturation={0.5}
+        radius={220}
+        depth={90}
+        count={8500}
+        factor={5.5}
+        saturation={0.6}
         fade
-        speed={1.2}
+        speed={1.0}
       />
 
-      {/* Close-proximity floating cosmic dust for zero-G motion parallax */}
-      <CosmicDust count={700} />
+      {/* Local floating cosmic dust particles */}
+      <CosmicDust count={750} />
 
-      {/* --- CENTRAL PROTAGONIST --- */}
-      <BasicAstronaut />
+      {/* --- CELESTIAL SPECTACLE: CINEMATIC BLACK HOLE --- */}
+      {/* Gargantua singularity located at cosmic origin [0, 0, 0] */}
+      <BlackHole
+        position={[0, 0, 0]}
+        eventHorizonRadius={1.35}
+        diskInnerRadius={1.65}
+        diskOuterRadius={7.2}
+        dopplerStrength={0.88}
+      />
+
+      {/* --- CENTRAL PROTAGONIST (STANDOFF POSITION) --- */}
+      {/* Astronaut positioned at standoff coordinates facing the singularity */}
+      <group position={[0, -0.15, 4.2]} rotation={[0, 0.25, 0]}>
+        <BasicAstronaut />
+      </group>
+
+      {/* --- POST-PROCESSING: PHOTON RADIANCE & BLOOM --- */}
+      <EffectComposer multisampling={0} enableNormalPass={false}>
+        <Bloom
+          luminanceThreshold={0.75}
+          luminanceSmoothing={0.3}
+          intensity={1.1}
+          mipmapBlur
+        />
+      </EffectComposer>
     </>
   );
 }

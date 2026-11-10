@@ -1,4 +1,4 @@
-﻿/** @type {import('next').NextConfig} */
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['three', '@react-three/fiber', '@react-three/drei', 'three-stdlib'],
@@ -6,7 +6,7 @@ const nextConfig = {
     config.module.rules.push({
       test: /\.(glsl|vs|fs|vert|frag)$/,
       exclude: /node_modules/,
-      use: ['raw-loader', 'glslify-loader'],
+      type: 'asset/source',
     });
     return config;
   },
