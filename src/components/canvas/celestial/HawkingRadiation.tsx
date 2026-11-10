@@ -24,11 +24,13 @@ const vertexShader = /* glsl */ `
       sin(uTime * 0.7 + aPhase * 31.0),
       cos(uTime * 0.9 + aPhase * 17.0),
       sin(uTime * 0.55 + aPhase * 23.0)
-    ) * 0.035;
-    vec3 emittedPosition = direction * uEventHorizonRadius * mix(1.06, 1.95, journey) + drift;
+    ) * 0.01;
+    // Stay outside the Schwarzschild radius: these cues sit just above the
+    // horizon instead of appearing inside the black shadow.
+    vec3 emittedPosition = direction * uEventHorizonRadius * mix(1.23, 1.62, journey) + drift;
     vec4 mvPosition = modelViewMatrix * vec4(emittedPosition, 1.0);
     gl_Position = projectionMatrix * mvPosition;
-    gl_PointSize = aSize * (1.0 - journey) * (105.0 / -mvPosition.z);
+    gl_PointSize = aSize * (1.0 - journey) * (44.0 / -mvPosition.z);
     vFlicker = (1.0 - journey) * (0.4 + 0.6 * sin(uTime * 3.0 + aPhase * 80.0));
   }
 `;
@@ -40,8 +42,8 @@ const fragmentShader = /* glsl */ `
   void main() {
     float distanceToCenter = length(gl_PointCoord - vec2(0.5));
     float softPoint = 1.0 - smoothstep(0.05, 0.5, distanceToCenter);
-    vec3 quantumViolet = vec3(0.43, 0.58, 1.0);
-    gl_FragColor = vec4(quantumViolet, softPoint * vFlicker * 0.22);
+    vec3 quantumViolet = vec3(0.34, 0.16, 1.0);
+    gl_FragColor = vec4(quantumViolet, softPoint * vFlicker * 0.15);
   }
 `;
 
@@ -50,7 +52,7 @@ const fragmentShader = /* glsl */ `
  * A stellar-mass or supermassive black hole would not emit visible Hawking
  * radiation; this is a cinematic teaching cue, kept below disk brightness.
  */
-export function HawkingRadiation({ eventHorizonRadius, count = 72 }: HawkingRadiationProps) {
+export function HawkingRadiation({ eventHorizonRadius, count = 36 }: HawkingRadiationProps) {
   const pointsRef = useRef<THREE.Points>(null!);
   const { camera } = useThree();
 
@@ -67,7 +69,7 @@ export function HawkingRadiation({ eventHorizonRadius, count = 72 }: HawkingRadi
       positions[index * 3 + 1] = z;
       positions[index * 3 + 2] = Math.sin(theta) * radial;
       phases[index] = Math.random();
-      sizes[index] = 1.4 + Math.random() * 2.2;
+      sizes[index] = 0.45 + Math.random() * 0.7;
     }
 
     const bufferGeometry = new THREE.BufferGeometry();
@@ -97,6 +99,7 @@ export function HawkingRadiation({ eventHorizonRadius, count = 72 }: HawkingRadi
         uniforms={uniforms}
         transparent
         depthWrite={false}
+        toneMapped={false}
         blending={THREE.AdditiveBlending}
       />
     </points>

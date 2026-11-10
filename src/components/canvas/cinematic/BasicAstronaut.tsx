@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useMemo, forwardRef } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
 /**
@@ -11,6 +11,10 @@ import * as THREE from "three";
  */
 export const BasicAstronaut = forwardRef<THREE.Group>(function BasicAstronaut(_props, ref) {
   const innerRef = useRef<THREE.Group>(null!);
+  const { camera } = useThree();
+  const astronautWorldPosition = useMemo(() => new THREE.Vector3(), []);
+  const cameraToAstronaut = useMemo(() => new THREE.Vector3(), []);
+  const closestApproach = useMemo(() => new THREE.Vector3(), []);
 
   // Memoized PBR materials
   const { suitMat, jointMat, visorMat, packMat, ledCyan, ledGreen, ledAmber } = useMemo(() => {
@@ -53,6 +57,22 @@ export const BasicAstronaut = forwardRef<THREE.Group>(function BasicAstronaut(_p
       innerRef.current.rotation.x = Math.sin(t * 0.4) * 0.05;
       innerRef.current.rotation.y = Math.cos(t * 0.3) * 0.08;
       innerRef.current.rotation.z = Math.sin(t * 0.25) * 0.04;
+
+      // Lens only the astronaut image when Gargantua lies directly between it
+      // and the viewer. This is a restrained visual approximation of strong
+      // lensing, not physical stretching of the astronaut's body.
+      innerRef.current.getWorldPosition(astronautWorldPosition);
+      cameraToAstronaut.copy(astronautWorldPosition).sub(camera.position);
+      const astronautDistance = cameraToAstronaut.length();
+      cameraToAstronaut.normalize();
+      const blackHoleDepth = camera.position.clone().negate().dot(cameraToAstronaut);
+      closestApproach.copy(camera.position).addScaledVector(cameraToAstronaut, blackHoleDepth);
+      const impactParameter = closestApproach.length();
+      const isBehindHorizon = blackHoleDepth > 0 && astronautDistance > blackHoleDepth;
+      const lensStrength = isBehindHorizon
+        ? (1.0 - THREE.MathUtils.smoothstep(0.8, 3.1, impactParameter)) * 0.42
+        : 0;
+      innerRef.current.scale.set(1.0 - lensStrength * 0.3, 1.0 + lensStrength * 0.75, 1.0 - lensStrength * 0.22);
     }
   });
 

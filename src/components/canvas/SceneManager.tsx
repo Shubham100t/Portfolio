@@ -10,6 +10,7 @@ import { CosmicDust } from "./environment/CosmicDust";
 import { BasicAstronaut } from "./cinematic/BasicAstronaut";
 import { CinematicDirector } from "./cinematic/CinematicDirector";
 import { BlackHole } from "./celestial/BlackHole";
+import { DeflectedAsteroid } from "./celestial/DeflectedAsteroid";
 import { useUniverseStore } from "@/stores/useUniverseStore";
 
 export function SceneManager() {
@@ -73,6 +74,7 @@ export function SceneManager() {
         speed={1.0}
       />
       <CosmicDust count={750} />
+      <DeflectedAsteroid />
 
       {/* --- CELESTIAL SPECTACLE: CINEMATIC BLACK HOLE --- */}
       <BlackHole
