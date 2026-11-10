@@ -52,13 +52,15 @@ void main() {
   
   // 1. VERTICAL LENSED ENVELOPE: light bent over top and bottom
   // Maximum at top (angle ~ PI/2) and bottom (angle ~ -PI/2)
-  float verticalWeight = pow(abs(sin(angle)), 1.6);
+  float verticalWeight = pow(abs(sin(angle)), 0.9);
   
   // 2. INCLINATION MODULATION
   // Halo is strongest when viewing edge-on; fades when looking straight down from pole
   vec3 viewDir = normalize(uCameraPosition);
   float cosInc = abs(dot(viewDir, normalize(uDiskNormal)));
-  float inclinationWeight = clamp(1.0 - pow(cosInc, 1.4), 0.0, 1.0);
+  // Gravitationally lensed light remains observable from every camera angle.
+  // Edge-on views become more dramatic, but never vanish into a hard cutoff.
+  float inclinationWeight = mix(0.42, 1.0, 1.0 - pow(cosInc, 1.4));
   
   // 3. KEPLERIAN PLASMA TURBULENCE
   float omega = 2.2 / pow(r, 1.5);

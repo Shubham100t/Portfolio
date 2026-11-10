@@ -29,10 +29,13 @@ export function BlackHole({
 }: BlackHoleProps) {
   const { camera } = useThree();
   const groupRef = useRef<THREE.Group>(null!);
+  const diskRef = useRef<THREE.Mesh>(null!);
   const haloRef = useRef<THREE.Mesh>(null!);
   const diskMatRef = useRef<THREE.ShaderMaterial>(null!);
   const haloMatRef = useRef<THREE.ShaderMaterial>(null!);
   const photonRingRef = useRef<THREE.Mesh>(null!);
+  const diskWorldNormal = useMemo(() => new THREE.Vector3(), []);
+  const diskWorldQuaternion = useMemo(() => new THREE.Quaternion(), []);
 
   const photonRadius = eventHorizonRadius * 1.5; // Theoretical circular photon orbit: 1.5 Rs
 
@@ -62,7 +65,8 @@ export function BlackHole({
       uCameraPosition: { value: new THREE.Vector3() },
       uDiskNormal: { value: diskNormal },
       uInnerRadius: { value: eventHorizonRadius * 1.08 },
-      uOuterRadius: { value: diskOuterRadius * 0.65 },
+      // Lensed light hugs the horizon; it is not a second full-size disk.
+      uOuterRadius: { value: eventHorizonRadius * 2.25 },
       uPhotonRadius: { value: photonRadius },
       uDopplerStrength: { value: dopplerStrength * 0.75 },
     }),
@@ -78,6 +82,11 @@ export function BlackHole({
     if (haloMatRef.current) {
       haloMatRef.current.uniforms.uTime.value += delta;
       haloMatRef.current.uniforms.uCameraPosition.value.copy(camera.position);
+      if (diskRef.current) {
+        diskRef.current.getWorldQuaternion(diskWorldQuaternion);
+        diskWorldNormal.set(0, 0, 1).applyQuaternion(diskWorldQuaternion).normalize();
+        haloMatRef.current.uniforms.uDiskNormal.value.copy(diskWorldNormal);
+      }
     }
 
     // 2. Dynamically align the lensed halo with camera view direction
@@ -87,13 +96,16 @@ export function BlackHole({
       haloRef.current.quaternion.copy(camera.quaternion);
     }
 
-    // 3. Subtle slow precession of the physical disk
-    if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.012;
+    // 3. Subtle slow precession of only the physical disk. Keeping the root
+    // still prevents the camera-facing lens from being dragged into a second,
+    // perpendicular plane.
+    if (diskRef.current) {
+      diskRef.current.rotation.y += delta * 0.012;
     }
 
     // 4. Photon ring micro-pulsation
     if (photonRingRef.current) {
+      photonRingRef.current.quaternion.copy(camera.quaternion);
       const osc = 1.0 + Math.sin(diskUniforms.uTime.value * 2.8) * 0.007;
       photonRingRef.current.scale.set(osc, osc, osc);
     }
@@ -109,7 +121,7 @@ export function BlackHole({
       </mesh>
 
       {/* 2. PHOTON SPHERE RING: 1.5 Rs incandescent emission boundary */}
-      <mesh ref={photonRingRef} rotation={[Math.PI / 2, 0, 0]} renderOrder={2}>
+      <mesh ref={photonRingRef} renderOrder={2}>
         <ringGeometry args={[photonRadius - 0.035, photonRadius + 0.035, 128]} />
         <meshBasicMaterial
           color="#fffbeb"
@@ -122,7 +134,7 @@ export function BlackHole({
 
       {/* 3. PRIMARY EQUATORIAL ACCRETION DISK */}
       {/* The single, physical Keplerian disk in 3D space */}
-      <mesh rotation={[-Math.PI * 0.46, 0.06, 0]} renderOrder={0}>
+      <mesh ref={diskRef} rotation={[-Math.PI * 0.42, 0.06, 0]} renderOrder={0}>
         <ringGeometry args={[diskInnerRadius, diskOuterRadius, 128, 64]} />
         <shaderMaterial
           ref={diskMatRef}
@@ -140,7 +152,7 @@ export function BlackHole({
       {/* Simulates light from the back of the disk bent over the top and bottom toward the observer */}
       {/* Centered at [0,0,0], perfectly billboarding to camera, zero front protrusion */}
       <mesh ref={haloRef} renderOrder={0}>
-        <ringGeometry args={[eventHorizonRadius * 1.08, diskOuterRadius * 0.65, 128, 48]} />
+        <ringGeometry args={[eventHorizonRadius * 1.08, eventHorizonRadius * 2.25, 128, 48]} />
         <shaderMaterial
           ref={haloMatRef}
           vertexShader={lensedHaloVertexShader}

@@ -84,8 +84,9 @@ export function SceneManager() {
       />
 
       {/* --- CENTRAL PROTAGONIST (STANDOFF POSITION) --- */}
-      {/* Outer group at standoff; CinematicDirector animates the inner group via ref */}
-      <group position={[0, -0.15, 4.2]} rotation={[0, 0.25, 0]}>
+      {/* A foreground orbit keeps the astronaut clear of Gargantua's silhouette.
+          It faces the singularity while remaining readable in the establishing shot. */}
+      <group position={[-3.15, -0.65, 5.0]} rotation={[0, 2.58, 0]}>
         <BasicAstronaut ref={astronautRef} />
       </group>
 
