@@ -76,7 +76,7 @@ void main() {
   
   // 4. RADIAL FALLOFF
   float innerFalloff = smoothstep(uInnerRadius, uInnerRadius + 0.25, r);
-  float outerFalloff = smoothstep(uOuterRadius, uOuterRadius - 0.8, r);
+  float outerFalloff = 1.0 - smoothstep(uOuterRadius - 0.8, uOuterRadius, r);
   float radialPeak = exp(-pow(normR * 2.2, 1.5));
   float baseDensity = innerFalloff * outerFalloff * (0.3 + 0.7 * radialPeak);
   

@@ -20,11 +20,13 @@ export function DeflectedAsteroid() {
 
   useFrame(({ clock }) => {
     const elapsed = clock.getElapsedTime();
-    const progress = (0.2 + elapsed * 0.035) % 1;
-    const x = -8.2 + progress * 16.4;
-    const bend = 1.5 * Math.exp(-Math.pow(x / 2.2, 2));
-    const y = -1.75 + bend;
-    const z = 1.75 + 0.16 * Math.sin(progress * Math.PI);
+    // A one-way infall: it curves toward the singularity and is never reset
+    // into an orbit once it crosses the horizon.
+    const progress = Math.min(elapsed * 0.052, 1);
+    const remaining = 1 - progress;
+    const x = -6.2 * remaining * remaining;
+    const y = -1.25 * remaining * remaining + 0.72 * remaining * (1 - remaining);
+    const z = 2.3 * remaining * remaining;
 
     if (asteroidRef.current) {
       asteroidRef.current.position.set(x, y, z);
@@ -33,12 +35,11 @@ export function DeflectedAsteroid() {
 
     const attribute = trailGeometry.getAttribute("position") as THREE.BufferAttribute;
     for (let point = 0; point < 30; point += 1) {
-      const p = Math.max(0, progress - (29 - point) * 0.006);
-      const trailX = -8.2 + p * 16.4;
-      const trailBend = 1.5 * Math.exp(-Math.pow(trailX / 2.2, 2));
-      trailPositions[point * 3] = trailX;
-      trailPositions[point * 3 + 1] = -1.75 + trailBend;
-      trailPositions[point * 3 + 2] = 1.75 + 0.16 * Math.sin(p * Math.PI);
+      const p = progress * (point / 29);
+      const trailRemaining = 1 - p;
+      trailPositions[point * 3] = -6.2 * trailRemaining * trailRemaining;
+      trailPositions[point * 3 + 1] = -1.25 * trailRemaining * trailRemaining + 0.72 * trailRemaining * (1 - trailRemaining);
+      trailPositions[point * 3 + 2] = 2.3 * trailRemaining * trailRemaining;
     }
     attribute.needsUpdate = true;
   });

@@ -98,7 +98,7 @@ export function CinematicDirector({ astronautRef }: CinematicDirectorProps) {
     if (astronautRef.current) {
       tl.to(
         astronautRef.current.position,
-        { z: -1.2, duration: 13, ease: "power1.inOut" },
+        { z: 1.2, duration: 13, ease: "power1.inOut" },
         12
       );
     }
@@ -124,7 +124,7 @@ export function CinematicDirector({ astronautRef }: CinematicDirectorProps) {
     if (astronautRef.current) {
       tl.to(
         astronautRef.current.position,
-        { z: -2.3, duration: 15, ease: "power2.inOut" },
+        { z: 2.3, duration: 15, ease: "power2.inOut" },
         25
       );
     }
@@ -150,7 +150,7 @@ export function CinematicDirector({ astronautRef }: CinematicDirectorProps) {
     if (astronautRef.current) {
       tl.to(
         astronautRef.current.position,
-        { z: -2.8, duration: 15, ease: "power3.in" },
+        { z: 2.8, duration: 15, ease: "power3.in" },
         40
       );
     }

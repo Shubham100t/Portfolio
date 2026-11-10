@@ -70,7 +70,7 @@ void main() {
   
   // 3. RADIAL INTENSITY ENVELOPE
   float innerFalloff = smoothstep(uInnerRadius, uInnerRadius + 0.35, r);
-  float outerFalloff = smoothstep(uOuterRadius, uOuterRadius - 1.2, r);
+  float outerFalloff = 1.0 - smoothstep(uOuterRadius - 1.2, uOuterRadius, r);
   float radialPeak = exp(-pow(normR * 2.6, 1.4));
   float baseDensity = innerFalloff * outerFalloff * (0.35 + 0.65 * radialPeak);
   

@@ -42,8 +42,8 @@ const fragmentShader = /* glsl */ `
   void main() {
     float distanceToCenter = length(gl_PointCoord - vec2(0.5));
     float softPoint = 1.0 - smoothstep(0.05, 0.5, distanceToCenter);
-    vec3 quantumViolet = vec3(0.34, 0.16, 1.0);
-    gl_FragColor = vec4(quantumViolet, softPoint * vFlicker * 0.15);
+    vec3 quantumViolet = vec3(0.58, 0.12, 1.0);
+    gl_FragColor = vec4(quantumViolet, softPoint * vFlicker * 0.52);
   }
 `;
 
@@ -62,14 +62,14 @@ export function HawkingRadiation({ eventHorizonRadius, count = 36 }: HawkingRadi
     const sizes = new Float32Array(count);
 
     for (let index = 0; index < count; index += 1) {
+      // A camera-facing rim concentrates the sparse sparks around the
+      // silhouette, where the horizon is actually visible to the viewer.
       const theta = Math.random() * Math.PI * 2;
-      const z = Math.random() * 2 - 1;
-      const radial = Math.sqrt(1 - z * z);
-      positions[index * 3] = Math.cos(theta) * radial;
-      positions[index * 3 + 1] = z;
-      positions[index * 3 + 2] = Math.sin(theta) * radial;
+      positions[index * 3] = Math.cos(theta);
+      positions[index * 3 + 1] = Math.sin(theta);
+      positions[index * 3 + 2] = (Math.random() - 0.5) * 0.08;
       phases[index] = Math.random();
-      sizes[index] = 0.45 + Math.random() * 0.7;
+      sizes[index] = 0.3 + Math.random() * 0.45;
     }
 
     const bufferGeometry = new THREE.BufferGeometry();
