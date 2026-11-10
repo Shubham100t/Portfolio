@@ -6,6 +6,8 @@ import * as THREE from "three";
 import {
   accretionDiskVertexShader,
   accretionDiskFragmentShader,
+  lensedHaloVertexShader,
+  lensedHaloFragmentShader,
 } from "@/shaders/blackhole";
 
 interface BlackHoleProps {
@@ -22,48 +24,77 @@ export function BlackHole({
   scale = 1.0,
   eventHorizonRadius = 1.35,
   diskInnerRadius = 1.65,
-  diskOuterRadius = 6.4,
+  diskOuterRadius = 6.8,
   dopplerStrength = 0.88,
 }: BlackHoleProps) {
   const { camera } = useThree();
   const groupRef = useRef<THREE.Group>(null!);
-  const raymarchMatRef = useRef<THREE.ShaderMaterial>(null!);
+  const haloRef = useRef<THREE.Mesh>(null!);
+  const diskMatRef = useRef<THREE.ShaderMaterial>(null!);
+  const haloMatRef = useRef<THREE.ShaderMaterial>(null!);
   const photonRingRef = useRef<THREE.Mesh>(null!);
 
-  const sphereRadius = diskOuterRadius * 1.1;
-  const photonRadius = eventHorizonRadius * 1.5;
+  const photonRadius = eventHorizonRadius * 1.5; // Theoretical circular photon orbit: 1.5 Rs
 
-  // Uniforms for relativistic raymarched black hole & accretion disk
-  const uniforms = useMemo(
+  // Normal vector of the tilted equatorial disk
+  const diskNormal = useMemo(() => {
+    const euler = new THREE.Euler(-Math.PI * 0.46, 0.06, 0);
+    return new THREE.Vector3(0, 1, 0).applyEuler(euler).normalize();
+  }, []);
+
+  // Uniforms for primary equatorial accretion disk
+  const diskUniforms = useMemo(
     () => ({
       uTime: { value: 0 },
       uCameraPosition: { value: new THREE.Vector3() },
-      uBlackHolePosition: { value: new THREE.Vector3(...position) },
-      uEventHorizonRadius: { value: eventHorizonRadius },
       uInnerRadius: { value: diskInnerRadius },
       uOuterRadius: { value: diskOuterRadius },
+      uPhotonRadius: { value: photonRadius },
       uDopplerStrength: { value: dopplerStrength },
-      uSphereRadius: { value: sphereRadius },
     }),
-    [position, eventHorizonRadius, diskInnerRadius, diskOuterRadius, dopplerStrength, sphereRadius]
+    [diskInnerRadius, diskOuterRadius, photonRadius, dopplerStrength]
+  );
+
+  // Uniforms for camera-aligned lensed secondary halo
+  const haloUniforms = useMemo(
+    () => ({
+      uTime: { value: 0 },
+      uCameraPosition: { value: new THREE.Vector3() },
+      uDiskNormal: { value: diskNormal },
+      uInnerRadius: { value: eventHorizonRadius * 1.08 },
+      uOuterRadius: { value: diskOuterRadius * 0.65 },
+      uPhotonRadius: { value: photonRadius },
+      uDopplerStrength: { value: dopplerStrength * 0.75 },
+    }),
+    [diskNormal, eventHorizonRadius, diskOuterRadius, photonRadius, dopplerStrength]
   );
 
   useFrame((_, delta) => {
-    // 1. Advance shader clock & sync camera position
-    if (raymarchMatRef.current) {
-      raymarchMatRef.current.uniforms.uTime.value += delta;
-      raymarchMatRef.current.uniforms.uCameraPosition.value.copy(camera.position);
-      raymarchMatRef.current.uniforms.uBlackHolePosition.value.set(...position);
+    // 1. Advance shader clocks
+    if (diskMatRef.current) {
+      diskMatRef.current.uniforms.uTime.value += delta;
+      diskMatRef.current.uniforms.uCameraPosition.value.copy(camera.position);
+    }
+    if (haloMatRef.current) {
+      haloMatRef.current.uniforms.uTime.value += delta;
+      haloMatRef.current.uniforms.uCameraPosition.value.copy(camera.position);
     }
 
-    // 2. Subtle precession
+    // 2. Dynamically align the lensed halo with camera view direction
+    // This guarantees the lensed arches are ALWAYS seen behind the singularity over/under the horizon
+    // eliminating any rigid intersecting geometry or front protruding rings
+    if (haloRef.current) {
+      haloRef.current.quaternion.copy(camera.quaternion);
+    }
+
+    // 3. Subtle slow precession of the physical disk
     if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.01;
+      groupRef.current.rotation.y += delta * 0.012;
     }
 
-    // 3. Subtle photon ring pulsation
+    // 4. Photon ring micro-pulsation
     if (photonRingRef.current) {
-      const osc = 1.0 + Math.sin(uniforms.uTime.value * 2.5) * 0.006;
+      const osc = 1.0 + Math.sin(diskUniforms.uTime.value * 2.8) * 0.007;
       photonRingRef.current.scale.set(osc, osc, osc);
     }
   });
@@ -71,36 +102,54 @@ export function BlackHole({
   return (
     <group ref={groupRef} position={position} scale={scale}>
       {/* 1. SCHWARZSCHILD EVENT HORIZON: Absolute black singularity core */}
-      <mesh renderOrder={-1}>
+      {/* Occludes anything directly behind the singularity */}
+      <mesh renderOrder={1}>
         <sphereGeometry args={[eventHorizonRadius, 64, 64]} />
         <meshBasicMaterial color="#000000" />
       </mesh>
 
-      {/* 2. PHOTON SPHERE RING: 1.5 Rs incandescent boundary */}
-      <mesh ref={photonRingRef} rotation={[Math.PI / 2, 0, 0]} renderOrder={0}>
-        <ringGeometry args={[photonRadius - 0.03, photonRadius + 0.03, 128]} />
+      {/* 2. PHOTON SPHERE RING: 1.5 Rs incandescent emission boundary */}
+      <mesh ref={photonRingRef} rotation={[Math.PI / 2, 0, 0]} renderOrder={2}>
+        <ringGeometry args={[photonRadius - 0.035, photonRadius + 0.035, 128]} />
         <meshBasicMaterial
           color="#fffbeb"
           side={THREE.DoubleSide}
           transparent={true}
-          opacity={0.9}
+          opacity={0.92}
           blending={THREE.AdditiveBlending}
         />
       </mesh>
 
-      {/* 3. RELATIVISTIC RAYMARCHED ACCRETION DISK & GRAVITATIONAL LENS */}
-      {/* Unified geodesic solver: computes primary disk, lensed upper/lower halo arcs, and starlight bending */}
-      <mesh renderOrder={-1}>
-        <sphereGeometry args={[sphereRadius, 64, 64]} />
+      {/* 3. PRIMARY EQUATORIAL ACCRETION DISK */}
+      {/* The single, physical Keplerian disk in 3D space */}
+      <mesh rotation={[-Math.PI * 0.46, 0.06, 0]} renderOrder={0}>
+        <ringGeometry args={[diskInnerRadius, diskOuterRadius, 128, 64]} />
         <shaderMaterial
-          ref={raymarchMatRef}
+          ref={diskMatRef}
           vertexShader={accretionDiskVertexShader}
           fragmentShader={accretionDiskFragmentShader}
-          uniforms={uniforms}
-          side={THREE.BackSide}
+          uniforms={diskUniforms}
+          side={THREE.DoubleSide}
           transparent={true}
           depthWrite={false}
-          blending={THREE.NormalBlending}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+
+      {/* 4. DYNAMIC VIEW-ALIGNED LENSED SECONDARY HALO */}
+      {/* Simulates light from the back of the disk bent over the top and bottom toward the observer */}
+      {/* Centered at [0,0,0], perfectly billboarding to camera, zero front protrusion */}
+      <mesh ref={haloRef} renderOrder={0}>
+        <ringGeometry args={[eventHorizonRadius * 1.08, diskOuterRadius * 0.65, 128, 48]} />
+        <shaderMaterial
+          ref={haloMatRef}
+          vertexShader={lensedHaloVertexShader}
+          fragmentShader={lensedHaloFragmentShader}
+          uniforms={haloUniforms}
+          side={THREE.DoubleSide}
+          transparent={true}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
         />
       </mesh>
     </group>
