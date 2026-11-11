@@ -1,8 +1,8 @@
 # COSMOS — Project Handover Document
 
 **Project:** COSMOS — An Interactive 3D Portfolio Universe  
-**Current Date:** 2026-11-10  
-**Current Phase:** Phase 3 Complete (Cinematic Timeline Orchestration) -> Ready for Phase 4 (Spaghettification GLSL Vertex Shader)  
+**Current Date:** 2026-11-11  
+**Current Phase:** Phase 4–8 foundation and visual-fidelity pass implemented in the working tree; ready for visual QA/polish before Phase 9  
 **Git Branch:** `phase-3-cinematic-orchestration`  
 
 ---
@@ -74,6 +74,49 @@ COSMOS is an ultra-realistic, cinematic, interactive 3D universe presenting a so
 - **Prologue UI:** `CinematicOverlay.tsx` supplies 2.39:1 letterboxing, timed subtitles/telemetry, escalating gravity and event-horizon alarms, a progress readout, and a keyboard-accessible Skip Intro action (button or Escape).
 - **State integration:** The store starts in `cinematic` mode and exposes `cinematicProgress`; completion or skip transitions to `exploring`.
 
+### Phase 4–8: Exploration Foundation & Destination Visual Pass (Implemented; needs visual QA)
+
+This work is currently **uncommitted** on `phase-3-cinematic-orchestration`. It provides working foundations, not a claim that all Phase 4–8 production requirements are closed.
+
+#### Phase 4 — Tidal Spaghettification
+- Added `src/shaders/spaghettification.vert.glsl` and `src/shaders/spaghettification.frag.glsl`.
+- Added `src/components/canvas/cinematic/TidalSheath.tsx`, a GPU-driven, additive tidal-shear envelope around the astronaut.
+- `BasicAstronaut.tsx` now mounts the sheath; its existing CPU-scale lensing/tidal deformation remains additive.
+
+#### Phase 5 — Persistent Particle Foundation
+- Added `src/components/canvas/cinematic/ParticleContinuum.tsx` and mounted it in `SceneManager.tsx`.
+- It is one persistent `THREE.Points` buffer whose opacity changes with cinematic/exploration mode. This is a foundation for the Particle Continuity Law, but it does **not yet** make the astronaut mesh dissolve into those exact particles.
+
+#### Phase 6 — Cinematic Completion Status
+- Existing skip/escape and cinematic-to-exploration handoff remain in place from Phase 3.
+- Dedicated soundtrack synchronization and a complete ARIA introduction are **not implemented**; those remain future work tied to real audio assets and Phase 9 portfolio grounding.
+
+#### Phase 7 — 6-DOF Navigation
+- Added `src/components/canvas/FlightController.tsx`.
+- Exploration controls: `W/S` forward/back, `A/D` strafe, `R/F` vertical translation, and `Shift` boost.
+- Flight is disabled during the cinematic and while a destination fly-to is active.
+- Added `src/components/canvas/DestinationNavigator.tsx`: selecting a destination disables OrbitControls, smoothly moves the camera to an observation point, and points the camera at that target. Closing the panel restores manual controls.
+
+#### Phase 8 — Six Destinations & Editable Portfolio Content
+- Added destination state support (`flightEnabled`) in `src/types/universe.ts` and `src/stores/useUniverseStore.ts`.
+- Added `src/components/ui/NavigationOverlay.tsx` for destination selection and control hints.
+- Added `src/components/ui/DestinationPanel.tsx`, a closeable accessible content card rendered after a destination selection.
+- Added all destination world coordinates in `src/components/canvas/celestial/Destinations.tsx`:
+  - About: existing black hole at the origin.
+  - Skills: pulsar with an emissive neutron-star core, equatorial energized ring, and polar jets.
+  - Projects: Pillars-of-Creation-inspired volumetric dust columns.
+  - Achievements: diffuse, asymmetric supernova shock shell.
+  - Contact: ISS-inspired modular truss with transverse solar wings.
+  - Resume: shader-driven lensing/vortex gateway.
+- Added editable dummy portfolio and resume copy in `src/data/portfolio.ts`. Replace this file’s strings with verified biography, resume, project, achievement, contact, and link data.
+
+#### Latest Visual-Fidelity Changes (Reference-Driven)
+- User-supplied reference images were inspected; the first reads as a dusty pillar/nebula composition, the second as a bipolar stellar/nebular eruption, and the third as a stylized gravitational lensing scene.
+- Replaced the visibly toy-like capped `TubeGeometry` pillars with 5,600 color-varied, soft radial-sprite particles following three irregular dust-column curves.
+- Replaced visible line spikes/smooth remnant lobes with a 7,600-particle, uneven cyan/orange/red shock shell that slowly expands and precesses.
+- Replaced the Resume gateway’s many exposed torus loops with a camera-facing GLSL vortex: warped polar light streams, turbulence, a dark core, and cyan/gold lensing. The effect relies on existing bloom rather than hard geometry.
+- Added an in-memory radial `CanvasTexture` sprite (`useGlowMap`) so nebula/remnant particles render as soft glows rather than square point sprites.
+
 ---
 
 ## 3. Important Implementation Lessons & Bug Fixes
@@ -90,27 +133,24 @@ COSMOS is an ultra-realistic, cinematic, interactive 3D universe presenting a so
    - In `@react-three/postprocessing`, pass `enableNormalPass={false}` instead of `disableNormalPass` to satisfy TypeScript types.
 5. **PowerShell Windows Encoding**:
    - In PowerShell 5.1, use single-quoted here-strings (`@' ... '@`) or UTF8 without BOM (`[System.IO.File]::WriteAllText($path, $content, $utf8NoBom)`) to prevent unintended variable/escape evaluation.
+6. **Avoid Visible Debug Geometry for Astronomical Objects**:
+   - Exposed torus loops, flat-ended tubes, line-segment rays, and default square `PointsMaterial` sprites read as toy/debug geometry at close range.
+   - Prefer soft radial-sprite particle volumes for dust and shock fronts; reserve hard meshes for recognizable engineered objects such as the station. Use shader-driven screenspace/billboard vortexes for nonphysical concepts such as a wormhole gateway.
+7. **Destination Navigation Must Own the Camera**:
+   - A button that only writes `activeDestination` provides no visible navigation. During a fly-to, disable OrbitControls and player flight, interpolate camera position/look-at toward the destination, then restore controls when the panel closes.
+8. **Next.js Development 404 / Trace Cache**:
+   - After adding scene modules, an old browser session can request stale hashed chunks and return a 404. Clear only the git-ignored `.next` directory, then restart `npm run dev`.
+   - `npx tsc --noEmit` passed after the latest changes. `next build` intermittently stalls or errors while opening/writing `.next\\trace` on this Windows environment even after compiling source; treat this as an environment/cache-lock issue and retry after stopping other Next processes.
 
 ---
 
-## 4. Immediate Next Step: Phase 3 — Astronaut & Cinematic Timeline Orchestration
+## 4. Immediate Next Step: Visual QA and Phase 9 Preparation
 
-### Objective:
-Orchestrate the 55-second cinematic prologue where the astronaut floats weightlessly, gazes into the singularity, and begins the gravitational descent toward the event horizon.
-
-### Phase 3 Key Requirements:
-1. **Branch**: `git checkout -b phase-3-cinematic-orchestration`
-2. **Cinematic Director / GSAP Timeline**:
-   - 0s - 12s: Establishing deep cosmos, starry expanse, astronaut floating in zero-G facing Gargantua.
-   - 12s - 25s: Camera dolly-in, astronaut thruster pulse, drifting closer to the accretion disk.
-   - 25s - 40s: Gravitational pull intensifies, HUD alarms, time dilation distortion effects.
-   - 40s - 55s: Descent toward photon ring preparing for tidal spaghettification (Phase 4).
-3. **Interactive Overlays**:
-   - Cinematic Letterboxing (2.39:1 aspect ratio bars).
-   - "Skip Intro" button smoothly transitioning camera to exploration mode.
-   - Subtitle / narrative telemetry log sequence.
-4. **Integration**:
-   - Seamless transition hook in `useUniverseStore.ts` (`mode: 'cinematic'` -> `mode: 'exploring'`).
+1. Start/restart the development server (`npm run dev`) and inspect each destination at close range after cache regeneration.
+2. Tune particle counts, point sizes, bloom, and destination camera offsets on the target GPU. The latest particle volumes are intentionally denser and need performance profiling on the intended device.
+3. Replace all dummy data in `src/data/portfolio.ts` with verified portfolio facts before beginning ARIA grounding.
+4. Decide whether Phase 5’s astronaut-to-particles transition should use a single instanced model/surface-sampling buffer or a GPU simulation. The present `ParticleContinuum` is only its continuity foundation.
+5. Begin Phase 9 only after verified content exists: ARIA must not generate facts beyond the real portfolio data.
 
 ---
 
@@ -120,11 +160,11 @@ Orchestrate the 55-second cinematic prologue where the astronaut floats weightle
 - **Phase 1:** 3D Foundation & Persistent Scene (Done)
 - **Phase 2:** Cinematic Black Hole (Done & Polished)
 - **Phase 3:** Astronaut & Cinematic Timeline Orchestration (Done)
-- **Phase 4:** Spaghettification GLSL Vertex Shader
-- **Phase 5:** Particle Transformation & Galactic Assembly (Continuous Particle Buffer)
-- **Phase 6:** COSMOS Cinematic Completion (Audio sync, Skip Intro, ARIA intro)
-- **Phase 7:** 6-DOF Zero-Gravity Flight Navigation & Compass Radar
-- **Phase 8:** 6 Portfolio Destinations (Neutron Star, Nebula + Project Planets, Supernova, Space Station, Gateway)
+- **Phase 4:** Spaghettification GLSL Vertex Shader (foundation implemented; visual QA pending)
+- **Phase 5:** Particle Transformation & Galactic Assembly (persistent buffer implemented; exact mesh-to-particle continuity pending)
+- **Phase 6:** COSMOS Cinematic Completion (skip integration present; audio/ARIA intro pending)
+- **Phase 7:** 6-DOF Zero-Gravity Flight Navigation & Compass Radar (flight and destination fly-to implemented; radar pending)
+- **Phase 8:** 6 Portfolio Destinations (landmarks, fly-to, and content panels implemented; production content/polish pending)
 - **Phase 9:** ARIA AI Guide (Rigged 3D avatar, visemes, grounded RAG)
 - **Phase 10:** UI HUD, Quality Settings & Semantic HTML Fallback
 - **Phase 11:** Performance Profiling & Optimization (LOD, 4-tier graphics)
@@ -136,7 +176,7 @@ Orchestrate the 55-second cinematic prologue where the astronaut floats weightle
 
 Copy and paste the prompt in the next chat:
 ```markdown
-We are developing COSMOS (an ultra-realistic 3D portfolio universe). 
-Phase 0 through Phase 3 are complete on branch `phase-3-cinematic-orchestration`.
-Please read `HANDOVER.md` in the root workspace and proceed directly with Phase 4: Spaghettification GLSL Vertex Shader.
+We are developing COSMOS (an ultra-realistic 3D portfolio universe).
+Phase 0 through 3 are complete; Phase 4 through 8 foundations are implemented but require visual QA and production polish on branch `phase-3-cinematic-orchestration`.
+Please read `HANDOVER.md`, inspect the current working tree, and continue with visual QA, real portfolio-data replacement, exact particle continuity, or Phase 9 ARIA only after verifying the project state.
 ```

@@ -4,6 +4,7 @@ import React, { useRef, useMemo, forwardRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useUniverseStore } from "@/stores/useUniverseStore";
+import { TidalSheath } from "./TidalSheath";
 
 /**
  * BasicAstronaut
@@ -89,6 +90,7 @@ export const BasicAstronaut = forwardRef<THREE.Group>(function BasicAstronaut(_p
     <group ref={ref}>
       {/* Inner group: zero-G float animation */}
       <group ref={innerRef}>
+        <TidalSheath />
         {/* --- HEAD & HELMET --- */}
         <group position={[0, 1.45, 0]}>
           <mesh material={suitMat}>

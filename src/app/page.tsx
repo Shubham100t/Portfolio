@@ -4,6 +4,8 @@ import dynamic from "next/dynamic";
 import { BrandingOverlay } from "@/components/ui/BrandingOverlay";
 import { CinematicOverlay } from "@/components/ui/CinematicOverlay";
 import { useUniverseStore } from "@/stores/useUniverseStore";
+import { NavigationOverlay } from "@/components/ui/NavigationOverlay";
+import { DestinationPanel } from "@/components/ui/DestinationPanel";
 
 // Dynamically import UniverseCanvas with SSR disabled to guarantee clean WebGL hydration
 const UniverseCanvas = dynamic(
@@ -24,6 +26,8 @@ export default function CosmosHome() {
 
       {/* Sci-Fi HUD branding — hidden during cinematic mode */}
       {mode !== "cinematic" && <BrandingOverlay />}
+      <NavigationOverlay />
+      <DestinationPanel />
     </main>
   );
 }

@@ -4,6 +4,7 @@ varying vec2 vUv;
 varying vec3 vWorldPosition;
 varying vec3 vNormal;
 varying vec3 vViewPosition;
+varying vec3 vWorldTangent;
 varying float vRadius;
 varying float vAngle;
 
@@ -75,8 +76,7 @@ void main() {
   float baseDensity = innerFalloff * outerFalloff * (0.35 + 0.65 * radialPeak);
   
   // 4. RELATIVISTIC DOPPLER BEAMING & BLUESHIFT/REDSHIFT
-  vec3 localTangent = normalize(vec3(-sin(vAngle), cos(vAngle), 0.0));
-  vec3 worldTangent = normalize(mat3(modelMatrix) * localTangent);
+  vec3 worldTangent = normalize(vWorldTangent);
   vec3 viewDir = normalize(uCameraPosition - vWorldPosition);
   
   float cosAlpha = dot(worldTangent, viewDir);

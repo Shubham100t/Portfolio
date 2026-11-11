@@ -12,10 +12,15 @@ import { CinematicDirector } from "./cinematic/CinematicDirector";
 import { BlackHole } from "./celestial/BlackHole";
 import { DeflectedAsteroid } from "./celestial/DeflectedAsteroid";
 import { useUniverseStore } from "@/stores/useUniverseStore";
+import { ParticleContinuum } from "./cinematic/ParticleContinuum";
+import { Destinations } from "./celestial/Destinations";
+import { FlightController } from "./FlightController";
+import { DestinationNavigator } from "./DestinationNavigator";
 
 export function SceneManager() {
   const { camera } = useThree();
   const mode = useUniverseStore((state) => state.mode);
+  const activeDestination = useUniverseStore((state) => state.activeDestination);
   const setCameraCoords = useUniverseStore((state) => state.setCameraCoords);
 
   // Ref forwarded to BasicAstronaut — CinematicDirector animates this group
@@ -36,7 +41,7 @@ export function SceneManager() {
       {/* Disabled during cinematic mode so GSAP owns the camera */}
       <OrbitControls
         makeDefault
-        enabled={mode !== "cinematic"}
+        enabled={mode !== "cinematic" && !activeDestination}
         enableDamping
         dampingFactor={0.06}
         minDistance={1.8}
@@ -49,6 +54,8 @@ export function SceneManager() {
 
       {/* --- CINEMATIC TIMELINE DIRECTOR (R3F inner) --- */}
       {mode === "cinematic" && <CinematicDirector astronautRef={astronautRef} />}
+      <FlightController />
+      <DestinationNavigator />
 
       {/* --- CINEMATIC LIGHTING --- */}
       <ambientLight intensity={0.4} color="#0f172a" />
@@ -74,6 +81,7 @@ export function SceneManager() {
         speed={1.0}
       />
       <CosmicDust count={750} />
+      <ParticleContinuum />
       <DeflectedAsteroid />
 
       {/* --- CELESTIAL SPECTACLE: CINEMATIC BLACK HOLE --- */}
@@ -84,6 +92,7 @@ export function SceneManager() {
         diskOuterRadius={7.2}
         dopplerStrength={0.88}
       />
+      <Destinations />
 
       {/* --- CENTRAL PROTAGONIST (STANDOFF POSITION) --- */}
       {/* A foreground orbit keeps the astronaut clear of Gargantua's silhouette.
