@@ -17,11 +17,14 @@ import { useUniverseStore } from "@/stores/useUniverseStore";
  * On completion OR skip: sets mode → 'exploring' and restores the initial camera.
  *
  * Camera keyframes:
- *   t= 0 s  [0, 1.5, 9.2]  fov 48  — Establishing: deep cosmos
- *   t=12 s  [0, 2.2, 7.8]  fov 46  — Drift in; astronaut thruster pulse
- *   t=25 s  [0, 1.0, 5.5]  fov 44  — Gravitational pull begins
- *   t=40 s  [0.8, 0.5, 3.8] fov 41 — Pull intensifies; HUD alarms
- *   t=55 s  [0.3, 0.2, 2.6] fov 38 — Photon ring; spaghettification imminent
+ *   t= 0 s  [0, 1.5, 9.2]   fov 48   — Establishing: astronaut 3/4, deep cosmos
+ *   t=12 s  [0, 1.55, 9.05] fov 47.6 — Barely-there drift; full figure framed
+ *   t=25 s  [0.15, 1.25, 7.4] fov 45 — Gravitational pull begins, body stretches
+ *   t=40 s  [0.55, 1.15, 11.2] fov 38 — Pull back so the elongated body stays framed
+ *   t=55 s  [0.35, 0.55, 5.4] fov 30 — Telephoto push onto the photon ring
+ *
+ * The astronaut itself travels from the standoff to just in front of the
+ * horizon, so the singularity never swallows it before the dissolve reads.
  */
 
 interface CinematicDirectorProps {
@@ -45,6 +48,39 @@ export function CinematicDirector({ astronautRef }: CinematicDirectorProps) {
     (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
   };
 
+  // Shared exit used by both natural completion and Skip. Restores the camera
+  // and the astronaut synchronously so exploration mode never inherits the
+  // warped, off-screen state from the descent.
+  const handoffToExploration = () => {
+    if (skipTweenRef.current) return;
+
+    if (astronautRef.current) {
+      astronautRef.current.position.set(-1.65, 0.7, 4.6);
+      astronautRef.current.rotation.set(0, 0, 0);
+    }
+
+    const progressProxy = { p: useUniverseStore.getState().cinematicProgress };
+    skipTweenRef.current = gsap.to(camProxy.current, {
+      x: 0,
+      y: 1.5,
+      z: 9.2,
+      fov: 48,
+      duration: 1.8,
+      ease: "power2.inOut",
+      onUpdate: applyCamera,
+      onComplete: () => {
+        skipTweenRef.current = null;
+        setMode("exploring");
+      },
+    });
+    gsap.to(progressProxy, {
+      p: 0,
+      duration: 1.2,
+      ease: "power2.out",
+      onUpdate: () => setCinematicProgress(progressProxy.p),
+    });
+  };
+
   useEffect(() => {
     // Guard: only build once
     if (tlRef.current) return;
@@ -62,9 +98,9 @@ export function CinematicDirector({ astronautRef }: CinematicDirectorProps) {
       camProxy.current,
       {
         x: 0,
-        y: 2.2,
-        z: 7.8,
-        fov: 46,
+        y: 1.55,
+        z: 9.05,
+        fov: 47.6,
         duration: 12,
         ease: "power1.inOut",
         onUpdate: () => {
@@ -80,10 +116,10 @@ export function CinematicDirector({ astronautRef }: CinematicDirectorProps) {
     tl.to(
       camProxy.current,
       {
-        x: 0,
-        y: 1.0,
-        z: 5.5,
-        fov: 44,
+        x: 0.15,
+        y: 1.25,
+        z: 7.4,
+        fov: 45,
         duration: 13,
         ease: "power2.inOut",
         onUpdate: () => {
@@ -94,25 +130,30 @@ export function CinematicDirector({ astronautRef }: CinematicDirectorProps) {
       12
     );
 
-    // Astronaut drift toward accretion disk during beat 2
+    // Astronaut is drawn downrange toward the singularity, but it stops short
+    // of the horizon: the remaining distance is covered by the dissolving
+    // sparks. Turning it roughly 3/4 lets the stretch read along the frame's
+    // vertical while the visor still catches the disk light.
     if (astronautRef.current) {
       tl.to(
         astronautRef.current.position,
-        { z: 1.2, duration: 13, ease: "power1.inOut" },
+        { x: 0.45, y: 0.05, z: 1.9, duration: 13, ease: "power2.inOut" },
         12
       );
     }
 
     // ── Beat 3: 25 → 40 s — Gravitational Pull ────────────────────────────
+    // The camera backs off as the tide takes over: the body more than doubles
+    // in height, so holding the dolly-in would push its head out of frame.
     tl.to(
       camProxy.current,
       {
-        x: 0.8,
-        y: 0.5,
-        z: 3.8,
-        fov: 41,
+        x: 0.55,
+        y: 1.15,
+        z: 11.2,
+        fov: 38,
         duration: 15,
-        ease: "power3.inOut",
+        ease: "power2.out",
         onUpdate: () => {
           applyCamera();
           setCinematicProgress(tl.progress());
@@ -124,21 +165,28 @@ export function CinematicDirector({ astronautRef }: CinematicDirectorProps) {
     if (astronautRef.current) {
       tl.to(
         astronautRef.current.position,
-        { z: 2.3, duration: 15, ease: "power2.inOut" },
+        { x: 0.5, y: -0.15, z: 1.6, duration: 15, ease: "power2.inOut" },
+        25
+      );
+      // Turn toward the singularity as gravity takes over.
+      tl.to(
+        astronautRef.current.rotation,
+        { y: 0.75, duration: 30, ease: "power1.inOut" },
         25
       );
     }
 
     // ── Beat 4: 40 → 55 s — Photon Ring Descent ───────────────────────────
+    // Only sparks remain by now, so the camera can close in on the horizon.
     tl.to(
       camProxy.current,
       {
-        x: 0.3,
-        y: 0.2,
-        z: 2.6,
-        fov: 38,
+        x: 0.35,
+        y: 0.55,
+        z: 5.4,
+        fov: 30,
         duration: 15,
-        ease: "power4.inOut",
+        ease: "power2.inOut",
         onUpdate: () => {
           applyCamera();
           setCinematicProgress(tl.progress());
@@ -150,15 +198,14 @@ export function CinematicDirector({ astronautRef }: CinematicDirectorProps) {
     if (astronautRef.current) {
       tl.to(
         astronautRef.current.position,
-        { z: 2.8, duration: 15, ease: "power3.in" },
+        { x: 0.5, y: -0.25, z: 1.45, duration: 15, ease: "power1.inOut" },
         40
       );
     }
 
     // ── Sequence complete ──────────────────────────────────────────────────
     tl.call(() => {
-      setCinematicProgress(1);
-      setMode("exploring");
+      handoffToExploration();
     });
 
     return () => {
@@ -172,35 +219,15 @@ export function CinematicDirector({ astronautRef }: CinematicDirectorProps) {
   // Expose skip handler on the window so CinematicOverlay can call it
   useEffect(() => {
     const skip = () => {
-      // A click and an Escape keypress can arrive in the same frame. Keep one
-      // deterministic hand-off tween rather than letting them fight for camera state.
+      // A click and an Escape keypress can arrive in the same frame. The shared
+      // hand-off guards against both driving the camera at once.
       if (skipTweenRef.current) return;
 
       if (tlRef.current) {
         tlRef.current.kill();
         tlRef.current = null;
       }
-      // Smooth camera restore
-      skipTweenRef.current = gsap.to(camProxy.current, {
-        x: 0,
-        y: 1.5,
-        z: 9.2,
-        fov: 48,
-        duration: 1.2,
-        ease: "power2.inOut",
-        onUpdate: () => {
-          applyCamera();
-        },
-        onComplete: () => {
-          // Reset astronaut to standoff position
-          if (astronautRef.current) {
-            astronautRef.current.position.set(0, 0, 0);
-          }
-          setCinematicProgress(0);
-          skipTweenRef.current = null;
-          setMode("exploring");
-        },
-      });
+      handoffToExploration();
     };
 
     (window as any).__cosmosSkipIntro = skip;

@@ -6,6 +6,10 @@ import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { DestinationId } from "@/types/universe";
 import { useUniverseStore } from "@/stores/useUniverseStore";
+import { Nebula } from "./Nebula";
+import { Wormhole } from "./Wormhole";
+import { Pulsar } from "./Pulsar";
+import { SupernovaRemnant } from "./Supernova";
 
 type Item = { id: DestinationId; label: string; position: [number, number, number]; color: string; kind: "pulsar" | "nebula" | "supernova" | "station" | "gateway" };
 const destinations: Item[] = [
@@ -20,78 +24,271 @@ export const DESTINATION_POSITIONS: Record<DestinationId, [number, number, numbe
   about: [0, 0, 0], skills: [-28, 8, -22], projects: [30, 4, -30], achievements: [-34, -7, 18], contact: [25, -8, 24], resume: [4, 14, -42],
 };
 
-function Pulsar() {
-  const root = useRef<THREE.Group>(null!); const core = useRef<THREE.MeshStandardMaterial>(null!);
-  useFrame(({ clock }) => { const t = clock.getElapsedTime(); if (root.current) root.current.rotation.y = .3 + t * 0.55; if (core.current) core.current.emissiveIntensity = 3.5 + Math.sin(t * 8.7) * 1.8; });
-  return <group ref={root} rotation={[0.38, 0.3, -0.2]}>
-    <pointLight color="#b9a6ff" intensity={9} distance={16} />
-    <mesh><sphereGeometry args={[1.02, 48, 48]} /><meshStandardMaterial ref={core} color="#c4b5fd" emissive="#a78bfa" emissiveIntensity={4} roughness={0.28} metalness={0.15} /></mesh>
-    <mesh rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[1.72, 0.08, 12, 96]} /><meshBasicMaterial color="#67e8f9" transparent opacity={0.82} /></mesh>
-    {[-1, 1].map((sign) => <group key={sign} position={[0, sign * 3.8, 0]}>
-      <mesh><coneGeometry args={[sign > 0 ? 0.12 : 0.76, 5.8, 28, 1, true]} /><meshBasicMaterial color="#7dd3fc" transparent opacity={0.32} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} /></mesh>
-      <pointLight color="#7dd3fc" intensity={2.5} distance={7} />
-    </group>)}
-  </group>;
+// Solar arrays: individual photovoltaic cells with silver bus bars, per-cell
+// tone variation and a slow diagonal reflection so the wings read as
+// structured hardware instead of flat dark boxes.
+const solarVertexShader = /* glsl */ `
+  varying vec2 vUv;
+  varying vec3 vNormalView;
+  varying vec3 vViewDir;
+
+  void main() {
+    vUv = uv;
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    vNormalView = normalize(normalMatrix * normal);
+    vViewDir = normalize(-mv.xyz);
+    gl_Position = projectionMatrix * mv;
+  }
+`;
+
+const solarFragmentShader = /* glsl */ `
+  precision highp float;
+
+  varying vec2 vUv;
+  varying vec3 vNormalView;
+  varying vec3 vViewDir;
+  uniform float uTime;
+
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+  }
+
+  void main() {
+    vec2 cells = vUv * vec2(9.0, 13.0);
+    vec2 f = fract(cells);
+    vec2 id = floor(cells);
+
+    // 0 on the bus bars, 1 inside the cell.
+    float inside = smoothstep(0.0, 0.05, min(f.x, 1.0 - f.x)) * smoothstep(0.0, 0.05, min(f.y, 1.0 - f.y));
+
+    float vary = hash(id);
+    vec3 cell = mix(vec3(0.012, 0.045, 0.10), vec3(0.035, 0.16, 0.34), vary);
+    vec3 bus = vec3(0.30, 0.52, 0.76);
+    vec3 col = mix(bus, cell, inside);
+
+    // Each cell catches the sun slightly differently.
+    float sheen = pow(max(0.0, dot(normalize(vNormalView), normalize(vViewDir + vec3(0.0, 0.6, 0.0)))), 3.0);
+    col += vec3(0.3, 0.6, 1.0) * sheen * (0.05 + 0.12 * vary) * inside;
+
+    // Slow diagonal reflection washing over the whole array.
+    float band = smoothstep(0.7, 1.0, sin((vUv.x * 2.2 + vUv.y) * 5.0 - uTime * 0.6));
+    col += vec3(0.45, 0.72, 1.0) * band * 0.06;
+
+    gl_FragColor = vec4(col, 1.0);
+  }
+`;
+
+const stationMats = {
+  frame: new THREE.MeshStandardMaterial({ color: "#8ba0b8", metalness: 0.92, roughness: 0.28 }),
+  hull: new THREE.MeshStandardMaterial({ color: "#dbe4f0", metalness: 0.62, roughness: 0.34 }),
+  hullDark: new THREE.MeshStandardMaterial({ color: "#9aabbd", metalness: 0.82, roughness: 0.3, side: THREE.DoubleSide }),
+  gold: new THREE.MeshStandardMaterial({ color: "#e0a43a", metalness: 0.9, roughness: 0.25, emissive: "#5a3208", emissiveIntensity: 0.3 }),
+  window: new THREE.MeshBasicMaterial({ color: "#8be9ff" }),
+  radiator: new THREE.MeshStandardMaterial({ color: "#eef2f7", metalness: 0.3, roughness: 0.55, side: THREE.DoubleSide }),
+  dark: new THREE.MeshStandardMaterial({ color: "#232f3d", metalness: 0.55, roughness: 0.45 }),
+  beaconRed: new THREE.MeshBasicMaterial({ color: "#ff5a5a", toneMapped: false }),
+  beaconWhite: new THREE.MeshBasicMaterial({ color: "#eaf6ff", toneMapped: false }),
+};
+
+function SolarPanel({ z, uniforms }: { z: number; uniforms: { uTime: { value: number } } }) {
+  return (
+    <group position={[0, 0, z]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[1.42, 1.92]} />
+        <shaderMaterial uniforms={uniforms} vertexShader={solarVertexShader} fragmentShader={solarFragmentShader} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Frame rails */}
+      {[-0.72, 0.72].map((dx) => (
+        <mesh key={`x${dx}`} position={[dx, 0.02, 0]} material={stationMats.frame}>
+          <boxGeometry args={[0.045, 0.035, 1.98]} />
+        </mesh>
+      ))}
+      {[-0.97, 0.97].map((dz) => (
+        <mesh key={`z${dz}`} position={[0, 0.02, dz]} material={stationMats.frame}>
+          <boxGeometry args={[1.5, 0.035, 0.045]} />
+        </mesh>
+      ))}
+      <mesh position={[0, 0.025, 0]} material={stationMats.gold}>
+        <boxGeometry args={[0.03, 0.02, 1.98]} />
+      </mesh>
+    </group>
+  );
 }
 
-function useGlowMap() {
-  return useMemo(() => {
-    const canvas = document.createElement("canvas"); canvas.width = canvas.height = 64;
-    const context = canvas.getContext("2d")!;
-    const gradient = context.createRadialGradient(32, 32, 0, 32, 32, 32);
-    gradient.addColorStop(0, "rgba(255,255,255,1)"); gradient.addColorStop(.22, "rgba(255,245,220,.92)"); gradient.addColorStop(.62, "rgba(255,142,46,.22)"); gradient.addColorStop(1, "rgba(255,96,16,0)");
-    context.fillStyle = gradient; context.fillRect(0, 0, 64, 64);
-    const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; return texture;
-  }, []);
+function SolarWing({ side, uniforms }: { side: 1 | -1; uniforms: { uTime: { value: number } } }) {
+  return (
+    <group position={[side * 4.9, 0, 0]}>
+      <mesh position={[-side * 0.55, 0, 0]} material={stationMats.gold}>
+        <boxGeometry args={[1.0, 0.09, 0.16]} />
+      </mesh>
+      <mesh position={[-side * 0.95, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={stationMats.frame}>
+        <cylinderGeometry args={[0.09, 0.09, 0.24, 14]} />
+      </mesh>
+      <SolarPanel z={-1.0} uniforms={uniforms} />
+      <SolarPanel z={1.0} uniforms={uniforms} />
+      <mesh position={[0, 0.06, side * 2.06]} material={stationMats.beaconRed}>
+        <sphereGeometry args={[0.05, 12, 12]} />
+      </mesh>
+    </group>
+  );
 }
-
-function Nebula() {
-  const root = useRef<THREE.Points>(null!); const glowMap = useGlowMap();
-  const { positions, colors } = useMemo(() => {
-    const curves = [
-      new THREE.CatmullRomCurve3([new THREE.Vector3(-2.7, -3.4, .1), new THREE.Vector3(-2.2, -1.3, -.35), new THREE.Vector3(-2.65, .9, .12), new THREE.Vector3(-1.65, 3.65, .1)]),
-      new THREE.CatmullRomCurve3([new THREE.Vector3(-.18, -3.6, -.3), new THREE.Vector3(.32, -1.55, .4), new THREE.Vector3(-.1, .28, -.16), new THREE.Vector3(.78, 2.7, .3)]),
-      new THREE.CatmullRomCurve3([new THREE.Vector3(2.25, -3.25, .1), new THREE.Vector3(1.88, -1.45, -.25), new THREE.Vector3(2.55, .12, .22), new THREE.Vector3(2.18, 1.85, -.14)]),
-    ];
-    const count = 5600; const p = new Float32Array(count * 3); const c = new Float32Array(count * 3); const orange = new THREE.Color("#f97316"); const violet = new THREE.Color("#7c3aed"); const soot = new THREE.Color("#160b08"); const color = new THREE.Color();
-    for (let i = 0; i < count; i++) { const curve = curves[Math.floor(Math.random() * curves.length)]; const t = Math.random(); const point = curve.getPoint(t); const width = (.2 + .6 * (1 - t)) * Math.pow(Math.random(), .42); const angle = Math.random() * Math.PI * 2; point.x += Math.cos(angle) * width; point.y += (Math.random() - .5) * width * .7; point.z += Math.sin(angle) * width * .7; p.set(point.toArray(), i * 3); const ember = Math.pow(Math.random(), 3.2); color.copy(soot).lerp(i % 5 === 0 ? violet : orange, ember); c.set([color.r, color.g, color.b], i * 3); }
-    return { positions: p, colors: c };
-  }, []);
-  useFrame(({ clock }) => { if (root.current) { const t = clock.getElapsedTime(); root.current.rotation.y = t * .018; root.current.rotation.z = Math.sin(t * .11) * .028; } });
-  return <points ref={root} rotation={[.05, -.35, -.06]}><bufferGeometry><bufferAttribute attach="attributes-position" args={[positions, 3]} /><bufferAttribute attach="attributes-color" args={[colors, 3]} /></bufferGeometry><pointsMaterial map={glowMap} vertexColors size={.145} sizeAttenuation transparent opacity={.82} alphaTest={.02} depthWrite={false} blending={THREE.AdditiveBlending} /></points>;
-}
-
-function SupernovaRemnant() {
-  const root = useRef<THREE.Points>(null!); const glowMap = useGlowMap();
-  const { positions, colors } = useMemo(() => { const count = 7600; const p = new Float32Array(count * 3); const c = new Float32Array(count * 3); const cyan = new THREE.Color("#38bdf8"); const orange = new THREE.Color("#fb923c"); const red = new THREE.Color("#fb7185"); const color = new THREE.Color(); for (let i = 0; i < count; i++) { const theta = Math.random() * Math.PI * 2; const phi = Math.acos(2 * Math.random() - 1); const filament = .72 + .38 * Math.pow(Math.sin(theta * 6 + phi * 5), 2); const radius = (2.5 + Math.random() * 2.3) * filament; p[i * 3] = radius * Math.sin(phi) * Math.cos(theta); p[i * 3 + 1] = radius * Math.cos(phi) * .74; p[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta); color.copy(Math.random() < .54 ? cyan : Math.random() < .7 ? orange : red).multiplyScalar(.45 + Math.random() * .75); c.set([color.r, color.g, color.b], i * 3); } return { positions: p, colors: c }; }, []);
-  useFrame(({ clock }) => { if (root.current) { const t = clock.getElapsedTime(); root.current.rotation.y = t * .022; root.current.rotation.z = -.42 + Math.sin(t * .23) * .025; root.current.scale.setScalar(1 + Math.sin(t * .38) * .018); } });
-  return <><points ref={root} rotation={[.16, -.4, -.45]}><bufferGeometry><bufferAttribute attach="attributes-position" args={[positions, 3]} /><bufferAttribute attach="attributes-color" args={[colors, 3]} /></bufferGeometry><pointsMaterial map={glowMap} vertexColors size={.105} sizeAttenuation transparent opacity={.84} alphaTest={.015} depthWrite={false} blending={THREE.AdditiveBlending} /></points><pointLight color="#fb923c" intensity={2.5} distance={13} /></>;
-}
-
-function SolarWing({ x }: { x: number }) { return <group position={[x, 0, 0]}><mesh><boxGeometry args={[1.25, .08, 4.4]} /><meshStandardMaterial color="#082f49" metalness={.8} roughness={.25} emissive="#0c4a6e" emissiveIntensity={.55} /></mesh>{[-1.65, -.55, .55, 1.65].map((offset) => <mesh key={offset} position={[0, .05, offset]}><boxGeometry args={[1.32, .025, .025]} /><meshBasicMaterial color="#7dd3fc" /></mesh>)}</group>; }
 
 function Station() {
-  const root = useRef<THREE.Group>(null!); const arrays = useRef<THREE.Group>(null!);
-  useFrame(({ clock }) => { const t = clock.getElapsedTime(); if (root.current) { root.current.rotation.y = -.55 + Math.sin(t * .09) * .14; root.current.position.y = Math.sin(t * .22) * .18; } if (arrays.current) arrays.current.rotation.y = t * .045; });
-  return <group ref={root} rotation={[.05, -.55, .12]}>
-    <mesh rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[.12, .12, 11.5, 12]} /><meshStandardMaterial color="#94a3b8" metalness={.92} roughness={.23} /></mesh>
-    {[-2.3, -1.1, 0, 1.15, 2.4].map((x, i) => <group key={x} position={[x, 0, 0]}><mesh rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[.62 + (i % 2) * .12, .62, 1.65, 24]} /><meshStandardMaterial color="#dbeafe" metalness={.72} roughness={.32} /></mesh>{i === 2 && <mesh position={[0, .76, 0]}><sphereGeometry args={[.42, 24, 24]} /><meshStandardMaterial color="#cbd5e1" metalness={.8} roughness={.25} /></mesh>}</group>)}
-    <group ref={arrays}><SolarWing x={-4.2} /><SolarWing x={4.2} /><mesh position={[0, 1.4, 0]}><boxGeometry args={[4.2, .08, .72]} /><meshStandardMaterial color="#94a3b8" metalness={.8} roughness={.3} /></mesh></group>
-    <pointLight color="#bfdbfe" intensity={2.4} distance={10} />
-  </group>;
-}
+  const root = useRef<THREE.Group>(null!);
+  const arrays = useRef<THREE.Group>(null!);
+  const dish = useRef<THREE.Group>(null!);
+  const solarUniforms = useMemo(() => ({ uTime: { value: 0 } }), []);
 
-function Wormhole() {
-  const disc = useRef<THREE.Mesh>(null!);
-  const uniforms = useMemo(() => ({ uTime: { value: 0 } }), []);
-  useFrame(({ clock, camera }) => { uniforms.uTime.value = clock.getElapsedTime(); if (disc.current) disc.current.quaternion.copy(camera.quaternion); });
-  const vertexShader = `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
-  const fragmentShader = `
-    uniform float uTime; varying vec2 vUv;
-    float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-    float noise(vec2 p) { vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f); return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y); }
-    void main() { vec2 p=vUv*2.0-1.0; float r=length(p); float a=atan(p.y,p.x); float warp=a + 1.8/(r+.12) - uTime*.24; float stream=.5+.5*sin(warp*8.0 + log(r+.04)*18.0); float turbulence=noise(vec2(a*3.0, r*18.0-uTime*.35)); float edge=smoothstep(.98,.13,r); float core=smoothstep(.19,.31,r); float filament=smoothstep(.57,.9,stream)*(.58+.42*turbulence)*edge*core; vec3 gold=vec3(1.0,.42,.035); vec3 blue=vec3(.08,.72,1.0); vec3 color=mix(gold,blue,.3+.3*sin(warp*2.0))*filament; color += vec3(1.0,.78,.35)*pow(filament,3.0); float alpha=filament*smoothstep(1.02,.7,r); if(r<.19) { color=vec3(0.002,0.004,0.009); alpha=1.0; } gl_FragColor=vec4(color,alpha); }`;
-  return <group><pointLight color="#fbbf24" intensity={4.3} distance={16} /><mesh ref={disc} renderOrder={3}><circleGeometry args={[4.5, 160]} /><shaderMaterial uniforms={uniforms} vertexShader={vertexShader} fragmentShader={fragmentShader} transparent depthWrite={false} blending={THREE.NormalBlending} /></mesh></group>;
+  // Lattice truss: one instanced mesh of zig-zag diagonals on both faces.
+  const truss = useMemo(() => {
+    const SPAN = 11;
+    const SEG = 14;
+    const HALF_H = 0.22;
+    const HALF_D = 0.42;
+    const geometry = new THREE.CylinderGeometry(0.016, 0.016, 1, 6);
+    const mesh = new THREE.InstancedMesh(geometry, stationMats.frame, SEG * 2);
+    const matrix = new THREE.Matrix4();
+    const quat = new THREE.Quaternion();
+    const up = new THREE.Vector3(0, 1, 0);
+    const dir = new THREE.Vector3();
+    const offset = new THREE.Vector3();
+    const scale = new THREE.Vector3();
+    let i = 0;
+    for (const z of [-HALF_D, HALF_D]) {
+      for (let k = 0; k < SEG; k++) {
+        const x0 = -SPAN / 2 + (k / SEG) * SPAN;
+        const x1 = -SPAN / 2 + ((k + 1) / SEG) * SPAN;
+        const y0 = k % 2 === 0 ? -HALF_H : HALF_H;
+        const y1 = -y0;
+        dir.set(x1 - x0, y1 - y0, 0);
+        const length = dir.length();
+        quat.setFromUnitVectors(up, dir.normalize());
+        offset.set((x0 + x1) / 2, (y0 + y1) / 2, z);
+        scale.set(1, length, 1);
+        matrix.compose(offset, quat, scale);
+        mesh.setMatrixAt(i++, matrix);
+      }
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.frustumCulled = false;
+    return mesh;
+  }, []);
+
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
+    solarUniforms.uTime.value = t;
+    if (root.current) {
+      root.current.rotation.y = -0.55 + Math.sin(t * 0.09) * 0.14;
+      root.current.position.y = Math.sin(t * 0.22) * 0.18;
+    }
+    if (arrays.current) arrays.current.rotation.x = Math.sin(t * 0.06) * 0.2;
+    if (dish.current) dish.current.rotation.y = Math.sin(t * 0.07) * 0.6;
+
+    // Out-of-phase strobes: red hazards and the white dish beacon.
+    const red = Math.pow(0.5 + 0.5 * Math.sin(t * 1.9), 8);
+    stationMats.beaconRed.color.setRGB(0.12 + red, 0.04 + red * 0.18, 0.04 + red * 0.18);
+    const white = Math.pow(0.5 + 0.5 * Math.sin(t * 1.9 + Math.PI), 8);
+    stationMats.beaconWhite.color.setRGB(0.18 + white * 0.85, 0.28 + white * 0.8, 0.4 + white * 0.7);
+  });
+
+  return (
+    <group ref={root} rotation={[0.05, -0.55, 0.12]}>
+      {/* Core spine + lattice truss */}
+      <mesh rotation={[0, 0, Math.PI / 2]} material={stationMats.frame}>
+        <cylinderGeometry args={[0.09, 0.09, 11.2, 12]} />
+      </mesh>
+      <primitive object={truss} />
+      {[-0.42, 0.42].map((z) =>
+        [-0.22, 0.22].map((y) => (
+          <mesh key={`${z}${y}`} position={[0, y, z]} material={stationMats.frame}>
+            <boxGeometry args={[11.4, 0.045, 0.045]} />
+          </mesh>
+        ))
+      )}
+
+      {/* Pressurised modules with window bands */}
+      {[-2.35, -1.15, 0, 1.15, 2.35].map((x, i) => {
+        const radius = 0.6 + (i % 2) * 0.14;
+        return (
+          <group key={x} position={[x, 0, 0]}>
+            <mesh rotation={[0, 0, Math.PI / 2]} material={i === 2 ? stationMats.hull : stationMats.hullDark}>
+              <cylinderGeometry args={[radius, radius, 1.0, 28]} />
+            </mesh>
+            {[-0.48, 0.48].map((dx) => (
+              <mesh key={dx} position={[dx, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={stationMats.frame}>
+                <torusGeometry args={[radius + 0.005, 0.02, 8, 32]} />
+              </mesh>
+            ))}
+            <mesh rotation={[0, Math.PI / 2, 0]} material={stationMats.window}>
+              <torusGeometry args={[radius + 0.012, 0.014, 8, 40]} />
+            </mesh>
+          </group>
+        );
+      })}
+
+      {/* Cupola on the centre module */}
+      <group position={[0, 0.6, 0]}>
+        <mesh material={stationMats.hullDark}>
+          <sphereGeometry args={[0.3, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.55]} />
+        </mesh>
+        <mesh position={[0, 0.03, 0]} rotation={[Math.PI / 2, 0, 0]} material={stationMats.window}>
+          <torusGeometry args={[0.26, 0.012, 8, 32]} />
+        </mesh>
+      </group>
+
+      {/* Antenna mast + tracking dish */}
+      <mesh position={[0, 0.94, 0]} material={stationMats.frame}>
+        <cylinderGeometry args={[0.035, 0.05, 0.55, 12]} />
+      </mesh>
+      <group ref={dish} position={[0, 1.2, 0]}>
+        <mesh material={stationMats.dark}>
+          <cylinderGeometry args={[0.06, 0.09, 0.16, 14]} />
+        </mesh>
+        <group position={[0, 0.1, 0]} rotation={[-0.42, 0, 0]}>
+          <mesh material={stationMats.hullDark}>
+            <sphereGeometry args={[0.52, 32, 18, 0, Math.PI * 2, 0, 0.9]} />
+          </mesh>
+          <mesh position={[0, 0.38, 0]} material={stationMats.frame}>
+            <cylinderGeometry args={[0.014, 0.014, 0.42, 8]} />
+          </mesh>
+          <mesh position={[0, 0.6, 0]} material={stationMats.beaconWhite}>
+            <sphereGeometry args={[0.045, 12, 12]} />
+          </mesh>
+        </group>
+      </group>
+
+      {/* Radiator panel under the truss */}
+      <group position={[0, -0.62, 0]}>
+        <mesh material={stationMats.radiator}>
+          <boxGeometry args={[1.9, 0.035, 1.15]} />
+        </mesh>
+        <mesh position={[0, -0.02, 0]} material={stationMats.frame}>
+          <boxGeometry args={[1.96, 0.02, 0.05]} />
+        </mesh>
+        {[-0.55, 0.55].map((dx) => (
+          <mesh key={dx} position={[dx, 0.18, 0]} material={stationMats.frame}>
+            <cylinderGeometry args={[0.025, 0.025, 0.38, 8]} />
+          </mesh>
+        ))}
+      </group>
+
+      {/* Sun-tracking solar arrays */}
+      <group ref={arrays}>
+        <SolarWing side={-1} uniforms={solarUniforms} />
+        <SolarWing side={1} uniforms={solarUniforms} />
+      </group>
+
+      {/* Truss tip beacons */}
+      {[-5.45, 5.45].map((x) => (
+        <mesh key={x} position={[x, 0.26, 0]} material={stationMats.beaconRed}>
+          <sphereGeometry args={[0.055, 12, 12]} />
+        </mesh>
+      ))}
+
+      <pointLight color="#bfdbfe" intensity={2.6} distance={11} />
+      <pointLight position={[0, -0.9, 0]} color="#fbbf24" intensity={0.7} distance={6} decay={2} />
+    </group>
+  );
 }
 
 function Landmark({ item }: { item: Item }) {

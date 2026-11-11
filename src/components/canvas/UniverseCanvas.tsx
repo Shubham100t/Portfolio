@@ -3,10 +3,18 @@
 import React, { Suspense } from "react";
 import { Canvas } from "@react-three/fiber";
 import { SceneManager } from "./SceneManager";
+import { useUniverseStore } from "@/stores/useUniverseStore";
+import { QUALITY_PRESETS } from "@/lib/quality";
 
 export function UniverseCanvas() {
+  const quality = useUniverseStore((s) => s.quality);
+  const preset = QUALITY_PRESETS[quality];
+
   return (
-    <div className="absolute inset-0 w-full h-full z-0 overflow-hidden cursor-grab active:cursor-grabbing bg-black">
+    <div
+      aria-hidden="true"
+      className="absolute inset-0 w-full h-full z-0 overflow-hidden cursor-grab active:cursor-grabbing bg-black"
+    >
       <Canvas
         camera={{
           fov: 48,
@@ -21,7 +29,7 @@ export function UniverseCanvas() {
           stencil: false,
           depth: true,
         }}
-        dpr={[1, 2]}
+        dpr={preset.dpr}
       >
         <Suspense fallback={null}>
           <SceneManager />

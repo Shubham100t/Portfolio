@@ -1,17 +1,26 @@
 uniform float uTime;
 uniform float uProgress;
-varying float vEnergy;
+varying vec3 vLocal;
+varying vec3 vNormalView;
+varying vec3 vViewDir;
+varying float vTidal;
 
-// Phase 4: tidal displacement is evaluated on the GPU so the silhouette
-// elongates toward the singularity without touching the persistent particle set.
+// The suit's non-uniform stretch is applied by the parent group, so the aura
+// only needs plasma displacement. Keeping the shell tight around the body is
+// what stops it from reading as a glowing cocoon.
 void main() {
   vec3 p = position;
-  float wave = sin(p.y * 7.0 + uTime * 4.0) * 0.12;
-  float tidal = smoothstep(0.55, 0.95, uProgress);
-  p.y *= 1.0 + tidal * 4.5;
-  p.x *= 1.0 - tidal * 0.58;
-  p.z *= 1.0 - tidal * 0.58;
-  p.x += wave * tidal;
-  vEnergy = tidal + abs(wave) * 0.5;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+  float tidal = smoothstep(0.36, 0.60, uProgress);
+  vTidal = tidal;
+
+  vec3 n = normalize(normal);
+  float ripple = sin(p.y * 9.0 + uTime * 3.1) * 0.035
+               + sin(p.x * 12.0 - uTime * 2.3) * 0.018;
+  p += n * ripple * tidal;
+
+  vLocal = p;
+  vec4 mv = modelViewMatrix * vec4(p, 1.0);
+  vNormalView = normalize(normalMatrix * n);
+  vViewDir = normalize(-mv.xyz);
+  gl_Position = projectionMatrix * mv;
 }

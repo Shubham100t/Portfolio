@@ -27,9 +27,9 @@ const SUBTITLES: SubtitleEntry[] = [
   { time: 12, text: "PROXIMITY ALERT // GARGANTUA MASS: 1.0×10⁸ M☉",           level: "normal"   },
   { time: 20, text: "RCS STATUS: THRUSTER PULSE ENGAGED — CLOSING VECTOR",      level: "normal"   },
   { time: 25, text: "⚠ WARNING // GRAVITATIONAL GRADIENT EXCEEDING 9.4G",      level: "warning"  },
-  { time: 32, text: "⚠ TIME DILATION FACTOR: τ = 0.61 — CAUTION ADVISED",     level: "warning"  },
-  { time: 40, text: "🔴 CRITICAL // EVENT HORIZON THRESHOLD BREACH IMMINENT",   level: "critical" },
-  { time: 48, text: "🔴 TIDAL FORCES NOMINAL — SPAGHETTIFICATION VECTOR LOCK", level: "critical" },
+  { time: 31, text: "⚠ TIDAL ELONGATION DETECTED — STRUCTURAL INTEGRITY FALLING", level: "warning" },
+  { time: 38, text: "🔴 CRITICAL // SUIT MATERIAL FAILURE — SPAGHETTIFICATION",  level: "critical" },
+  { time: 46, text: "🔴 PARTICLE STREAM LOCKED ON SINGULARITY",                 level: "critical" },
   { time: 53, text: "PHASE 3 COMPLETE // INITIATING EXPLORATION MODE",          level: "normal"   },
 ];
 

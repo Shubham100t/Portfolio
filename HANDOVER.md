@@ -2,7 +2,7 @@
 
 **Project:** COSMOS — An Interactive 3D Portfolio Universe  
 **Current Date:** 2026-11-11  
-**Current Phase:** Phase 4–8 foundation and visual-fidelity pass implemented in the working tree; ready for visual QA/polish before Phase 9  
+**Current Phase:** Phases 4–8 and 10–12 implemented in the working tree; Phase 9 (ARIA) needs external assets and verified portfolio data before it can start  
 **Git Branch:** `phase-3-cinematic-orchestration`  
 
 ---
@@ -74,41 +74,51 @@ COSMOS is an ultra-realistic, cinematic, interactive 3D universe presenting a so
 - **Prologue UI:** `CinematicOverlay.tsx` supplies 2.39:1 letterboxing, timed subtitles/telemetry, escalating gravity and event-horizon alarms, a progress readout, and a keyboard-accessible Skip Intro action (button or Escape).
 - **State integration:** The store starts in `cinematic` mode and exposes `cinematicProgress`; completion or skip transitions to `exploring`.
 
-### Phase 4–8: Exploration Foundation & Destination Visual Pass (Implemented; needs visual QA)
+### Phase 4–12: Exploration, Accessibility, Performance & Build (Implemented; uncommitted)
 
-This work is currently **uncommitted** on `phase-3-cinematic-orchestration`. It provides working foundations, not a claim that all Phase 4–8 production requirements are closed.
+This work is currently **uncommitted** on `phase-3-cinematic-orchestration`. Type-checking and a production build (`NEXT_DIST_DIR=.next-build npm run build`) pass; visual QA on the target GPU is still owned by the user.
 
 #### Phase 4 — Tidal Spaghettification
-- Added `src/shaders/spaghettification.vert.glsl` and `src/shaders/spaghettification.frag.glsl`.
-- Added `src/components/canvas/cinematic/TidalSheath.tsx`, a GPU-driven, additive tidal-shear envelope around the astronaut.
-- `BasicAstronaut.tsx` now mounts the sheath; its existing CPU-scale lensing/tidal deformation remains additive.
+- `BasicAstronaut.tsx` warps its inner group during the prologue: `smoothstep(progress, 0.36, 0.60)` drives vertical stretch up to 1.8× with lateral thinning to 0.68×, plus a slow strain sway. The transition starts at 0.36, so the pull-back camera can frame the whole body.
+- The suit and visor fade from `progress` 0.55–0.66; the visor shader gained `uOpacity` and a tidal-heat rim (`uHeat`).
+- Suit panels, joints, trim, steel, and accent materials ramp amber emissive while the local fill light rises, so the body heats before it tears.
+- `TidalSheath.tsx` is a tight, rim-only plasma aura (`spaghettification.vert/frag.glsl`) with fresnel energy, flow bands, helical filaments, and an interference tear. It fades with the suit instead of lingering as an empty shell.
+- `AstronautDebris.tsx` spawns solid instanced suit fragments (14–55 by quality tier) that peel off the stretched suit, tumble around the pull axis, elongate, and fall into the singularity with the sparks.
+- Beat 3 now pulls the camera back to `[0.55, 1.15, 11.2]` at fov 38 so the elongated figure remains fully framed; beat 4 pushes back in for the spark finale.
 
-#### Phase 5 — Persistent Particle Foundation
-- Added `src/components/canvas/cinematic/ParticleContinuum.tsx` and mounted it in `SceneManager.tsx`.
-- It is one persistent `THREE.Points` buffer whose opacity changes with cinematic/exploration mode. This is a foundation for the Particle Continuity Law, but it does **not yet** make the astronaut mesh dissolve into those exact particles.
+#### Phase 5 — Particle Continuity
+- `AstronautDissolve.tsx` samples the suit surface into a `THREE.Points` buffer, becomes visible at `progress` 0.52–0.62, and streams toward the singularity from 0.58 to ~0.92.
+- `ParticleContinuum.tsx` remains one persistent buffer spanning both modes. Dissolve particles are a separate buffer that fades into the singularity rather than literally reforming the destination landmarks; treat full single-buffer continuity as remaining work.
 
-#### Phase 6 — Cinematic Completion Status
-- Existing skip/escape and cinematic-to-exploration handoff remain in place from Phase 3.
-- Dedicated soundtrack synchronization and a complete ARIA introduction are **not implemented**; those remain future work tied to real audio assets and Phase 9 portfolio grounding.
+#### Phase 6 — Cinematic Completion
+- `CinematicOverlay.tsx` subtitles retimed to the new arc: gravity-gradient warning at 25s, tidal elongation at 31s, suit-material failure at 38s, particle-stream lock at 46s, phase complete at 53s.
+- Skip (button/Escape) and the shared `handoffToExploration()` path both restore the exploration camera and astronaut standoff.
+- Soundtrack synchronization and the ARIA introduction still require real audio assets and Phase 9.
 
-#### Phase 7 — 6-DOF Navigation
-- Added `src/components/canvas/FlightController.tsx`.
-- Exploration controls: `W/S` forward/back, `A/D` strafe, `R/F` vertical translation, and `Shift` boost.
-- Flight is disabled during the cinematic and while a destination fly-to is active.
-- Added `src/components/canvas/DestinationNavigator.tsx`: selecting a destination disables OrbitControls, smoothly moves the camera to an observation point, and points the camera at that target. Closing the panel restores manual controls.
+#### Phase 7 — 6-DOF Navigation & Compass Radar
+- `FlightController.tsx` provides W/S, A/D, R/F, Shift boost; disabled during cinematic and fly-to.
+- `DestinationNavigator.tsx` owns the camera during a fly-to and restores control when the panel closes.
+- `CompassRadar.tsx` is a camera-relative heading radar with clickable blips for all six destinations, live HDG readout, and a sweep gated on reduced motion.
 
-#### Phase 8 — Six Destinations & Editable Portfolio Content
-- Added destination state support (`flightEnabled`) in `src/types/universe.ts` and `src/stores/useUniverseStore.ts`.
-- Added `src/components/ui/NavigationOverlay.tsx` for destination selection and control hints.
-- Added `src/components/ui/DestinationPanel.tsx`, a closeable accessible content card rendered after a destination selection.
-- Added all destination world coordinates in `src/components/canvas/celestial/Destinations.tsx`:
-  - About: existing black hole at the origin.
-  - Skills: pulsar with an emissive neutron-star core, equatorial energized ring, and polar jets.
-  - Projects: Pillars-of-Creation-inspired volumetric dust columns.
-  - Achievements: diffuse, asymmetric supernova shock shell.
-  - Contact: ISS-inspired modular truss with transverse solar wings.
-  - Resume: shader-driven lensing/vortex gateway.
-- Added editable dummy portfolio and resume copy in `src/data/portfolio.ts`. Replace this file’s strings with verified biography, resume, project, achievement, contact, and link data.
+#### Phase 8 — Six Destinations
+- `Destinations.tsx` holds the black hole, pulsar, nebula, supernova remnant, orbital station, and gateway coordinates.
+- `NavigationOverlay.tsx`, `DestinationPanel.tsx`, and `src/data/portfolio.ts` provide selection, accessible content cards, and editable copy. Replace the dummy strings with verified portfolio facts.
+
+#### Phase 10 — HUD, Quality & Semantic Fallback
+- `BrandingOverlay.tsx` now includes a quality cycler (low/medium/high/ultra via `nextQuality()`) and a Text Mode button that calls `setMode("fallback")`.
+- `SemanticPortfolio.tsx` renders the full scrollable portfolio as semantic HTML with section anchors and a return-to-3D action.
+- `page.tsx` probes WebGL and `prefers-reduced-motion`; unsupported devices get the semantic version and the header sets `aria-hidden` on the canvas.
+- Reduced motion freezes star/dust/continuum rotation and the radar sweep.
+
+#### Phase 11 — Performance
+- `src/lib/quality.ts` defines four presets controlling DPR, star/dust/continuum/dissolve/hawking counts, and bloom intensity; all major particle systems read from it.
+- Transparent materials are configured at creation so the dissolve fade triggers no mid-prologue shader recompiles.
+- Remaining: on-device profiling and any LOD/instancing work identified by it.
+
+#### Phase 12 — Build & Deploy
+- Production build passes (Route `/` ≈ 272 kB, First Load JS ≈ 360 kB).
+- `next.config.mjs` supports `NEXT_DIST_DIR` so a build can run while `next dev` holds `.next` on Windows.
+- Deployment credentials/host are not configured; that is the only remaining Phase 12 step.
 
 #### Latest Visual-Fidelity Changes (Reference-Driven)
 - User-supplied reference images were inspected; the first reads as a dusty pillar/nebula composition, the second as a bipolar stellar/nebular eruption, and the third as a stylized gravitational lensing scene.
@@ -146,11 +156,11 @@ This work is currently **uncommitted** on `phase-3-cinematic-orchestration`. It 
 
 ## 4. Immediate Next Step: Visual QA and Phase 9 Preparation
 
-1. Start/restart the development server (`npm run dev`) and inspect each destination at close range after cache regeneration.
-2. Tune particle counts, point sizes, bloom, and destination camera offsets on the target GPU. The latest particle volumes are intentionally denser and need performance profiling on the intended device.
+1. Run `npm run dev` and watch the full 55s prologue end to end: astronaut stretch, suit dissolve, particle stream, and handoff. Verify the establishing shot does not clip the astronaut.
+2. Inspect each destination at close range and tune counts, point sizes, bloom, and camera offsets on the target GPU.
 3. Replace all dummy data in `src/data/portfolio.ts` with verified portfolio facts before beginning ARIA grounding.
-4. Decide whether Phase 5’s astronaut-to-particles transition should use a single instanced model/surface-sampling buffer or a GPU simulation. The present `ParticleContinuum` is only its continuity foundation.
-5. Begin Phase 9 only after verified content exists: ARIA must not generate facts beyond the real portfolio data.
+4. Decide whether the dissolve particles should feed `ParticleContinuum` directly (single persistent buffer) to satisfy the Particle Continuity Law literally.
+5. Begin Phase 9 only after verified content and a rigged ARIA avatar exist: ARIA must not generate facts beyond the real portfolio data.
 
 ---
 
@@ -160,15 +170,15 @@ This work is currently **uncommitted** on `phase-3-cinematic-orchestration`. It 
 - **Phase 1:** 3D Foundation & Persistent Scene (Done)
 - **Phase 2:** Cinematic Black Hole (Done & Polished)
 - **Phase 3:** Astronaut & Cinematic Timeline Orchestration (Done)
-- **Phase 4:** Spaghettification GLSL Vertex Shader (foundation implemented; visual QA pending)
-- **Phase 5:** Particle Transformation & Galactic Assembly (persistent buffer implemented; exact mesh-to-particle continuity pending)
-- **Phase 6:** COSMOS Cinematic Completion (skip integration present; audio/ARIA intro pending)
-- **Phase 7:** 6-DOF Zero-Gravity Flight Navigation & Compass Radar (flight and destination fly-to implemented; radar pending)
-- **Phase 8:** 6 Portfolio Destinations (landmarks, fly-to, and content panels implemented; production content/polish pending)
-- **Phase 9:** ARIA AI Guide (Rigged 3D avatar, visemes, grounded RAG)
-- **Phase 10:** UI HUD, Quality Settings & Semantic HTML Fallback
-- **Phase 11:** Performance Profiling & Optimization (LOD, 4-tier graphics)
-- **Phase 12:** Production Build & Deployment
+- **Phase 4:** Spaghettification GLSL Vertex Shader (Done)
+- **Phase 5:** Particle Transformation & Galactic Assembly (dissolve stream done; literal single-buffer continuity pending)
+- **Phase 6:** COSMOS Cinematic Completion (retimed beats and handoff done; audio/ARIA intro pending assets)
+- **Phase 7:** 6-DOF Zero-Gravity Flight Navigation & Compass Radar (Done)
+- **Phase 8:** 6 Portfolio Destinations (landmarks, fly-to, content panels done; verified content pending)
+- **Phase 9:** ARIA AI Guide (Blocked on rigged 3D avatar and grounded portfolio data)
+- **Phase 10:** UI HUD, Quality Settings & Semantic HTML Fallback (Done)
+- **Phase 11:** Performance Profiling & Optimization (4-tier presets done; on-device profiling pending)
+- **Phase 12:** Production Build & Deployment (build passing; deploy credentials pending)
 
 ---
 
@@ -177,6 +187,6 @@ This work is currently **uncommitted** on `phase-3-cinematic-orchestration`. It 
 Copy and paste the prompt in the next chat:
 ```markdown
 We are developing COSMOS (an ultra-realistic 3D portfolio universe).
-Phase 0 through 3 are complete; Phase 4 through 8 foundations are implemented but require visual QA and production polish on branch `phase-3-cinematic-orchestration`.
+Phase 0 through 3 are complete; Phases 4–8 and 10–12 are implemented on branch `phase-3-cinematic-orchestration` and await visual QA, verified portfolio data, and deployment credentials. Phase 9 (ARIA) is blocked on a rigged avatar.
 Please read `HANDOVER.md`, inspect the current working tree, and continue with visual QA, real portfolio-data replacement, exact particle continuity, or Phase 9 ARIA only after verifying the project state.
 ```

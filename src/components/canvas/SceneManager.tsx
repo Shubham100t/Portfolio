@@ -1,10 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Stars } from "@react-three/drei";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
-import { useRef } from "react";
 import * as THREE from "three";
 import { CosmicDust } from "./environment/CosmicDust";
 import { BasicAstronaut } from "./cinematic/BasicAstronaut";
@@ -16,32 +16,51 @@ import { ParticleContinuum } from "./cinematic/ParticleContinuum";
 import { Destinations } from "./celestial/Destinations";
 import { FlightController } from "./FlightController";
 import { DestinationNavigator } from "./DestinationNavigator";
+import { GravitationalLens } from "./effects/GravitationalLens";
+import { QUALITY_PRESETS } from "@/lib/quality";
 
 export function SceneManager() {
   const { camera } = useThree();
   const mode = useUniverseStore((state) => state.mode);
-  const activeDestination = useUniverseStore((state) => state.activeDestination);
+  const quality = useUniverseStore((state) => state.quality);
+  const reducedMotion = useUniverseStore((state) => state.reducedMotion);
   const setCameraCoords = useUniverseStore((state) => state.setCameraCoords);
+  const preset = QUALITY_PRESETS[quality];
 
   // Ref forwarded to BasicAstronaut — CinematicDirector animates this group
   const astronautRef = useRef<THREE.Group>(null);
 
-  // Sync camera position to global HUD telemetry
+  // Target is set once instead of through a prop: re-declaring it every render
+  // would snap the orbit pivot back to the origin when a panel closes.
+  const controlsRef = useRef<OrbitControlsImpl>(null);
+  useEffect(() => {
+    controlsRef.current?.target.set(0, 0.4, 0);
+  }, []);
+
+  // Sync camera position and facing to the HUD telemetry / compass radar.
+  const forward = useMemo(() => new THREE.Vector3(), []);
   useFrame(() => {
-    setCameraCoords({
-      x: parseFloat(camera.position.x.toFixed(2)),
-      y: parseFloat(camera.position.y.toFixed(2)),
-      z: parseFloat(camera.position.z.toFixed(2)),
-    });
+    camera.getWorldDirection(forward);
+    setCameraCoords(
+      {
+        x: parseFloat(camera.position.x.toFixed(2)),
+        y: parseFloat(camera.position.y.toFixed(2)),
+        z: parseFloat(camera.position.z.toFixed(2)),
+      },
+      Math.atan2(forward.x, forward.z)
+    );
   });
 
   return (
     <>
       {/* --- ORBIT & NAVIGATION CONTROLS --- */}
-      {/* Disabled during cinematic mode so GSAP owns the camera */}
+      {/* Disabled during cinematic mode so GSAP owns the camera. Stays enabled
+          while a destination panel is open so the landmark can be orbited and
+          zoomed; DestinationNavigator disables it only during the fly-in. */}
       <OrbitControls
+        ref={controlsRef}
         makeDefault
-        enabled={mode !== "cinematic" && !activeDestination}
+        enabled={mode !== "cinematic"}
         enableDamping
         dampingFactor={0.06}
         minDistance={1.8}
@@ -49,7 +68,6 @@ export function SceneManager() {
         rotateSpeed={0.7}
         panSpeed={0.6}
         zoomSpeed={0.8}
-        target={[0, 0.4, 0]}
       />
 
       {/* --- CINEMATIC TIMELINE DIRECTOR (R3F inner) --- */}
@@ -74,14 +92,14 @@ export function SceneManager() {
       <Stars
         radius={220}
         depth={90}
-        count={8500}
+        count={preset.stars}
         factor={5.5}
         saturation={0.6}
         fade
-        speed={1.0}
+        speed={reducedMotion ? 0 : 1.0}
       />
-      <CosmicDust count={750} />
-      <ParticleContinuum />
+      <CosmicDust count={preset.dust} />
+      <ParticleContinuum count={preset.continuum} />
       <DeflectedAsteroid />
 
       {/* --- CELESTIAL SPECTACLE: CINEMATIC BLACK HOLE --- */}
@@ -95,18 +113,23 @@ export function SceneManager() {
       <Destinations />
 
       {/* --- CENTRAL PROTAGONIST (STANDOFF POSITION) --- */}
-      {/* A foreground orbit keeps the astronaut clear of Gargantua's silhouette.
-          It faces the singularity while remaining readable in the establishing shot. */}
-      <group position={[-3.15, -0.65, 5.0]} rotation={[0, 2.58, 0]}>
-        <BasicAstronaut ref={astronautRef} />
+      {/* The outer group is world-space: CinematicDirector animates it with
+          absolute coordinates, and the inner group holds the 3/4 presentation
+          rotation so handing control back never disturbs the astronaut's
+          facing. Kept near the camera axis so the full figure stays framed. */}
+      <group ref={astronautRef} position={[-1.65, 0.7, 4.6]}>
+        <group rotation={[0, 1.15, 0]}>
+          <BasicAstronaut />
+        </group>
       </group>
 
-      {/* --- POST-PROCESSING: PHOTON RADIANCE & BLOOM --- */}
+      {/* --- POST-PROCESSING: LENSING, PHOTON RADIANCE & BLOOM --- */}
       <EffectComposer multisampling={0} enableNormalPass={false}>
+        <GravitationalLens eventHorizonRadius={1.35} />
         <Bloom
           luminanceThreshold={0.75}
           luminanceSmoothing={0.3}
-          intensity={1.1}
+          intensity={preset.bloomIntensity}
           mipmapBlur
         />
       </EffectComposer>

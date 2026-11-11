@@ -7,3 +7,5 @@ build
 *.log
 .env*.local
 .aider*
+
+.next-build

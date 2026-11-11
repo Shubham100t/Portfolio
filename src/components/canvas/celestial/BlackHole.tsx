@@ -149,7 +149,7 @@ export function BlackHole({
 
       {/* Deliberately sparse quantum-fluctuation visualization, not a literal
           visible Hawking glow for this supermassive object. */}
-      <HawkingRadiation eventHorizonRadius={eventHorizonRadius} count={13} />
+      <HawkingRadiation eventHorizonRadius={eventHorizonRadius} />
     </group>
   );
 }

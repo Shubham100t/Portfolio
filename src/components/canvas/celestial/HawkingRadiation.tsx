@@ -3,6 +3,8 @@
 import React, { useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
+import { useUniverseStore } from "@/stores/useUniverseStore";
+import { QUALITY_PRESETS } from "@/lib/quality";
 
 interface HawkingRadiationProps {
   eventHorizonRadius: number;
@@ -57,17 +59,19 @@ function BurstSpark({ angle, phase, speed, eventHorizonRadius, color }: BurstSpa
  * the visible horizon. This is cinematic visualization, not literal Hawking
  * luminosity from a supermassive black hole.
  */
-export function HawkingRadiation({ eventHorizonRadius, count = 13 }: HawkingRadiationProps) {
+export function HawkingRadiation({ eventHorizonRadius, count }: HawkingRadiationProps) {
   const rimRef = useRef<THREE.Group>(null!);
   const { camera } = useThree();
+  const quality = useUniverseStore((s) => s.quality);
+  const sparkCount = count ?? QUALITY_PRESETS[quality].hawkingSparks;
   const bursts = useMemo(
-    () => Array.from({ length: count }, () => ({
+    () => Array.from({ length: sparkCount }, () => ({
       angle: Math.random() * Math.PI * 2,
       phase: Math.random(),
       speed: 0.16 + Math.random() * 0.12,
       color: Math.random() > 0.28 ? "#a855f7" : "#38bdf8",
     })),
-    [count]
+    [sparkCount]
   );
 
   useFrame(() => {

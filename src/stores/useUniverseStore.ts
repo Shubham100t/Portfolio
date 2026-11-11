@@ -9,6 +9,7 @@ export const useUniverseStore = create<UniverseState>((set) => ({
   soundEnabled: false,
   reducedMotion: false,
   cameraCoords: { x: 0, y: 0, z: 5.5 },
+  cameraHeading: 0,
   cinematicProgress: 0,
   flightEnabled: true,
 
@@ -16,7 +17,9 @@ export const useUniverseStore = create<UniverseState>((set) => ({
   setActiveDestination: (dest: DestinationId | null) => set({ activeDestination: dest }),
   setQuality: (quality: QualityTier) => set({ quality }),
   toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
-  setCameraCoords: (coords) => set({ cameraCoords: coords }),
+  setReducedMotion: (reducedMotion) => set({ reducedMotion }),
+  setCameraCoords: (coords, heading) =>
+    set((state) => ({ cameraCoords: coords, cameraHeading: heading ?? state.cameraHeading })),
   setCinematicProgress: (progress: number) => set({ cinematicProgress: progress }),
   setFlightEnabled: (flightEnabled: boolean) => set({ flightEnabled }),
 }));

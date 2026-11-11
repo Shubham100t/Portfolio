@@ -3,6 +3,7 @@
 import React, { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { useUniverseStore } from "@/stores/useUniverseStore";
 
 export function CosmicDust({ count = 600 }: { count?: number }) {
   const pointsRef = useRef<THREE.Points>(null!);
@@ -24,6 +25,7 @@ export function CosmicDust({ count = 600 }: { count?: number }) {
 
   useFrame((_, delta) => {
     if (pointsRef.current) {
+      if (useUniverseStore.getState().reducedMotion) return;
       pointsRef.current.rotation.x += delta * 0.005;
       pointsRef.current.rotation.y += delta * 0.008;
     }

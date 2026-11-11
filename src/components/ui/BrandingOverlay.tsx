@@ -2,10 +2,11 @@
 
 import React, { useState } from "react";
 import { useUniverseStore } from "@/stores/useUniverseStore";
-import { Compass, Volume2, VolumeX, Eye, ShieldCheck, Sparkles } from "lucide-react";
+import { nextQuality } from "@/lib/quality";
+import { Compass, Volume2, VolumeX, Eye, ShieldCheck, Sparkles, BookOpen, Gauge } from "lucide-react";
 
 export function BrandingOverlay() {
-  const { cameraCoords, soundEnabled, toggleSound, quality } = useUniverseStore();
+  const { cameraCoords, soundEnabled, toggleSound, quality, setQuality, setMode } = useUniverseStore();
   const [showCenterBranding, setShowCenterBranding] = useState(true);
 
   return (
@@ -59,9 +60,23 @@ export function BrandingOverlay() {
             </span>
           </button>
 
-          <div className="px-3 py-1.5 glass-panel rounded-full text-[11px] text-slate-400 tracking-wider uppercase">
+          <button
+            onClick={() => setMode("fallback")}
+            className="flex items-center gap-2 px-3 py-1.5 glass-panel rounded-full text-xs text-slate-300 hover:text-white hover:border-sky-400/50 transition-all cursor-pointer"
+            title="Switch to the accessible text version"
+          >
+            <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+            <span className="hidden sm:inline text-[11px] uppercase tracking-wider">Text Mode</span>
+          </button>
+
+          <button
+            onClick={() => setQuality(nextQuality(quality))}
+            className="flex items-center gap-2 px-3 py-1.5 glass-panel rounded-full text-[11px] text-slate-400 tracking-wider uppercase hover:text-white hover:border-sky-400/50 transition-all cursor-pointer"
+            title="Cycle render quality: low, medium, high, ultra"
+          >
+            <Gauge className="w-3.5 h-3.5 text-sky-400/80" />
             {quality}
-          </div>
+          </button>
         </div>
       </header>
 

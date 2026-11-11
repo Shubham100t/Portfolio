@@ -19,6 +19,7 @@ export interface UniverseState {
   soundEnabled: boolean;
   reducedMotion: boolean;
   cameraCoords: { x: number; y: number; z: number };
+  cameraHeading: number;
   cinematicProgress: number;
   flightEnabled: boolean;
 
@@ -26,7 +27,8 @@ export interface UniverseState {
   setActiveDestination: (dest: DestinationId | null) => void;
   setQuality: (quality: QualityTier) => void;
   toggleSound: () => void;
-  setCameraCoords: (coords: { x: number; y: number; z: number }) => void;
+  setReducedMotion: (reduced: boolean) => void;
+  setCameraCoords: (coords: { x: number; y: number; z: number }, heading?: number) => void;
   setCinematicProgress: (progress: number) => void;
   setFlightEnabled: (enabled: boolean) => void;
 }

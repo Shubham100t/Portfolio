@@ -27,7 +27,8 @@ export function ParticleContinuum({ count = 2600 }: { count?: number }) {
     if (!points.current) return;
     const material = points.current.material as THREE.PointsMaterial;
     material.opacity = mode === "cinematic" ? 0.9 : 0.55;
-    points.current.rotation.y = clock.getElapsedTime() * 0.008;
+    const still = useUniverseStore.getState().reducedMotion;
+    points.current.rotation.y = still ? 0 : clock.getElapsedTime() * 0.008;
   });
 
   return <points ref={points} renderOrder={-1}>

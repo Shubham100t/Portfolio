@@ -60,3 +60,7 @@ body {
   45% { opacity: 0.22; transform: scale(1.015); }
   50% { opacity: 0.05; transform: scale(0.995); }
 }
+
+@keyframes radarSweep {
+  to { transform: rotate(360deg); }
+}
